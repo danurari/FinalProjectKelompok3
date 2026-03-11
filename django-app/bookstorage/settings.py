@@ -96,7 +96,8 @@ DATABASES = {
 AWS_ACCES_KEY_ID = get_secret('minio_access_key', 'minioadmin')
 AWS_SECRET_ACCESS_KEY = get_secret('minio_secret_key', 'password')
 AWS_STORAGE_BUCKET_NAME = 'bookstorage-bucket'
-AWS_S3_ENDPOINT_URL = 'http://minio:9000'
+AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_ENDPOINT', 'http://minio:9000')
+AWS_S3_ENDPOINT_URL_CUSTOM = os.environ.get('MINIO_EXTERNAL_ENDPOINT')
 
 AWS_S3_REGION_NAME = 'us-east-1'             
 AWS_S3_SIGNATURE_VERSION = 's3v4'

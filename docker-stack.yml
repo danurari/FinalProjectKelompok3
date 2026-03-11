@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   db:
@@ -27,14 +27,13 @@ services:
       - minio_access_key
       - minio_secret_key
     ports:
-      - "9000:9000"   # Port API MinIO
-      - "9001:9001"   # Port Console (Web UI) MinIO
+      - "9000:9000"
+      - "9001:9001"
     networks:
       - bookstore_net
 
   web:
     image: abdurrahmanondocker/bookstorage-django:latest
-    # Kita timpa CMD-nya biar dia otomatis nge-migrate database sebelum nyalain server Gunicorn
     command: >
       sh -c "python manage.py migrate && 
              gunicorn bookstorage.wsgi:application --bind 0.0.0.0:8000"
@@ -48,22 +47,20 @@ services:
       - DB_HOST=db
       - DB_PORT=5432
       - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_EXTERNAL_ENDPOINT=http://10.10.10.10:9000
     ports:
-      - "8000:8000"   # Port untuk buka Django dari laptop lu
+      - "8000:8000"
     networks:
       - bookstore_net
 
-# Deklarasi penyimpanan permanen
 volumes:
   db_data:
   minio_data:
 
-# Deklarasi jaringan internal Swarm
 networks:
   bookstore_net:
     driver: overlay
 
-# Deklarasi brankas rahasia lu yang udah ada di Swarm
 secrets:
   db_user:
     external: true
