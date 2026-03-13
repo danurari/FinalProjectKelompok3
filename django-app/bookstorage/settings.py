@@ -12,27 +12,25 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 
-def get_secret(secret_name, default=None):
-    try:
-        with open(f'/run/secrets/{secret_name}', 'r') as secret_file:
-            return secret_file.read().strip()
-    except:
-        return os.environ.get(secret_name, default)
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+def get_secret(secret_name, default=None):
+    try:
+        with open(f"/run/secrets/{secret_name}", 'r') as secret_file:
+            return secret_file.read().strip()
+    except:
+        return os.environ.get(secret_name, default)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-7!c*jir^itoxynwo&+gk8v(hsayqwv4xbbccs&%ts)z=o8@wuo'
+SECRET_KEY = get_secret('django-secret-key','django-insecure-6+nb*(d8naby!yx4c_&0g6s&pbrrxxuok8-c*w)2vf^&z%!)_@')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -44,7 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'books',
+    'buku',
     'storages',
 ]
 
@@ -84,37 +82,14 @@ WSGI_APPLICATION = 'bookstorage.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'bookstore_db'),
-        'USER': get_secret('db_user', 'bookstorage_user'),
-        'PASSWORD' : get_secret('db_password', 'password'),
-        'HOST': os.environ.get('DB_HOST', 'db'), 
-        'PORT': os.environ.get('DB_PORT', '5432'),
-
+        'NAME': get_secret('postgres_db', 'buku_db'),
+        'USER': get_secret('postgres_user', 'admin'),
+        'PASSWORD': get_secret('postgres_password', 'admin'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': '5432',
     }
 }
 
-AWS_ACCESS_KEY_ID = get_secret('minio_access_key', 'minioadmin')
-AWS_SECRET_ACCESS_KEY = get_secret('minio_secret_key', 'password')
-AWS_STORAGE_BUCKET_NAME = 'bookstorage-bucket'
-AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_ENDPOINT', 'http://minio:9000')
-AWS_S3_ENDPOINT_URL_CUSTOM = os.environ.get('MINIO_EXTERNAL_ENDPOINT')
-
-AWS_S3_REGION_NAME = 'us-east-1'             
-AWS_S3_SIGNATURE_VERSION = 's3v4'
-AWS_S3_ADDRESSING_STYLE = 'path'             
-AWS_QUERYSTRING_AUTH = True
-AWS_S3_FILE_OVERWRITE = False                
-AWS_DEFAULT_ACL = None        
-
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-    },
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-    },
-}
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -151,3 +126,18 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+AWS_ACCESS_KEY_ID = get_secret('minio_root_user', 'admin')
+AWS_SECRET_ACCESS_KEY = get_secret('minio_root_password', 'admin')
+AWS_STORAGE_BUCKET_NAME = 'buku-images-bucket'
+AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_URL', 'http://localhost:9000')
+AWS_S3_FILE_OVERWRITE = False
+AWS_S3_USE_SSL = False
