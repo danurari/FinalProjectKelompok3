@@ -8,3 +8,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # Set timezone to Indonesian times
 ENV TZ=Asia/Jakarta
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Performance Tuning for resource optimization
+CMD ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=128MB"]
