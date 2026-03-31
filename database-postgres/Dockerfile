@@ -11,3 +11,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Performance Tuning for resource optimization
 CMD ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=128MB"]
+
+# SQL setup script Initialization
+COPY init.sql /docker-entrypoint-initdb.d
