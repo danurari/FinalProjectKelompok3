@@ -81,12 +81,8 @@ WSGI_APPLICATION = 'bookstorage.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': get_secret('postgres_db', 'buku_db'),
-        'USER': get_secret('postgres_user', 'admin'),
-        'PASSWORD': get_secret('postgres_password', 'admin'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
