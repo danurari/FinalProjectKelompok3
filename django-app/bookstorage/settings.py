@@ -25,12 +25,12 @@ def get_secret(secret_name, default=None):
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = get_secret('django-secret-key','django-insecure-6+nb*(d8naby!yx4c_&0g6s&pbrrxxuok8-c*w)2vf^&z%!)_@')
+SECRET_KEY = get_secret('django_secret_key','django-insecure-6+nb*(d8naby!yx4c_&0g6s&pbrrxxuok8-c*w)2vf^&z%!)_@')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -141,3 +141,4 @@ AWS_STORAGE_BUCKET_NAME = 'buku-images-bucket'
 AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_URL', 'http://localhost:9000')
 AWS_S3_FILE_OVERWRITE = False
 AWS_S3_USE_SSL = False
+AWS_S3_ADDRESSING_STYLE = 'path'
