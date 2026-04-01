@@ -8,3 +8,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 # Input otomitation script
 COPY init-minio.sh /usr/bin/init-minio.sh
 RUN chmod +x /usr/bin/init-minio.sh
+
+# Script initialization
+CMD ["/usr/bin/init-minio.sh"]
