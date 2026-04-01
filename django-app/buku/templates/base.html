@@ -1,66 +1,209 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookFlow — {% block title %}{% endblock %}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        /* ... (Copy semua isi <style> dari kode HTML kamu ke sini) ... */
-    </style>
-</head>
-<body>
+{% extends 'base.html' %}
 
-<aside class="sidebar">
-    <div class="sidebar-logo">
-        <div class="logo-mark">
-            <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        </div>
-        <span class="logo-text">BookFlow</span>
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="fw-bold text-dark mb-1">System Dashboard</h1>
+        <p class="text-secondary mb-0">Welcome back, Admin. Here's what's happening today.</p>
     </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary bg-white fw-medium"><i class="bi bi-clock-history"></i> History</button>
+        <button class="btn btn-primary fw-medium"><i class="bi bi-plus-circle"></i> Quick Add Book</button>
+    </div>
+</div>
 
-    <nav class="sidebar-nav">
-        <div class="nav-group">
-            <div class="nav-group-label">Menu</div>
-            <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                Dashboard
-            </a>
-            <a href="{% url 'catalog' %}" class="nav-link {% if request.resolver_match.url_name == 'catalog' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                Book Catalog
-            </a>
-            <a href="{% url 'add_book' %}" class="nav-link {% if request.resolver_match.url_name == 'add_book' %}active{% endif %}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                Add New Book
-            </a>
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <i class="bi bi-book fs-4 text-primary bg-primary-subtle rounded p-2"></i>
+                <span class="badge badge-soft-success text-success">+12% from last month</span>
+            </div>
+            <p class="text-muted small mb-1 mt-2">Total Library Assets</p>
+            <h3 class="fw-bold mb-0">{{ total_assets }}</h3>
         </div>
-        </nav>
-</aside>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <i class="bi bi-people fs-4 text-info bg-info-subtle rounded p-2"></i>
+                <span class="badge badge-soft-success text-success">+5% growth</span>
+            </div>
+            <p class="text-muted small mb-1 mt-2">Active Borrowers</p>
+            <h3 class="fw-bold mb-0">{{ active_borrowers }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <i class="bi bi-plus-square fs-4 text-warning bg-warning-subtle rounded p-2"></i>
+                <span class="badge badge-soft-danger text-danger">-8% below target</span>
+            </div>
+            <p class="text-muted small mb-1 mt-2">New Acquisitions</p>
+            <h3 class="fw-bold mb-0">{{ new_acquisitions }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <i class="bi bi-exclamation-circle fs-4 text-danger bg-danger-subtle rounded p-2"></i>
+                <span class="badge badge-soft-success text-success">+resolved 4 today</span>
+            </div>
+            <p class="text-muted small mb-1 mt-2">Overdue Records</p>
+            <h3 class="fw-bold mb-0">{{ overdue_records }}</h3>
+        </div>
+    </div>
+</div>
 
-<div class="main">
-    <header class="topbar">
-        <div class="topbar-search">
-            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" placeholder="Search books...">
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div>
+                    <h5 class="fw-bold mb-1">Acquisition Trends</h5>
+                    <p class="text-muted small mb-0">Monthly book growth analysis for H1 2024</p>
+                </div>
+                <span class="fw-bold text-success small"><i class="bi bi-graph-up-arrow"></i> +24% Growth</span>
+            </div>
+            <canvas id="trendChart" height="100"></canvas>
         </div>
-        <div class="status-pill">
-            <span class="status-dot"></span>
-            AI Systems Operational
-        </div>
-        <div class="topbar-right">
-            <div class="user-chip">
-                <div class="user-av">A</div>
-                <div class="user-meta">
-                    <div class="name">Alya</div>
-                    <div class="role">Librarian</div>
+    </div>
+    
+    <div class="col-lg-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-ui-checks-grid text-primary me-2"></i>Librarian Workflows</h6>
+        <div class="d-flex flex-column gap-3">
+            <div class="card border-0 bg-primary text-white p-3 shadow-sm" style="cursor: pointer;">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-plus-circle fs-3 text-white-50"></i>
+                    <div>
+                        <h6 class="fw-bold mb-0">Add New Volume</h6>
+                        <small class="text-white-50">Manual entry for new book arrivals</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card p-3 shadow-sm hover-effect" style="cursor: pointer;">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-file-earmark-bar-graph fs-3 text-primary bg-primary-subtle rounded p-2"></i>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Generate Monthly Report</h6>
+                        <small class="text-muted">Export library stats as PDF/Excel</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card p-3 shadow-sm hover-effect" style="cursor: pointer;">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-cloud-arrow-up fs-3 text-info bg-info-subtle rounded p-2"></i>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Bulk CSV Import</h6>
+                        <small class="text-muted">Upload large datasets via spreadsheet</small>
+                    </div>
                 </div>
             </div>
         </div>
-    </header>
-
-    {% block content %}{% endblock %}
+    </div>
 </div>
-</body>
-</html>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h5 class="fw-bold mb-1">Recently Added Books</h5>
+                    <p class="text-muted small mb-0">Latest entries into the catalog system</p>
+                </div>
+                <a href="#" class="text-decoration-none small fw-medium">View All Catalog</a>
+            </div>
+            
+            <div class="d-flex flex-column gap-3">
+                {% for book in recent_books %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-secondary rounded" style="width: 40px; height: 50px;"></div> <div>
+                            <h6 class="fw-bold text-dark mb-0">{{ book.title }}</h6>
+                            <small class="text-muted">{{ book.author }} • {{ book.genre }}</small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted d-block mb-1">{{ book.time }}</small>
+                        <span class="badge border text-dark fw-normal rounded-pill">New</span>
+                    </div>
+                </div>
+                {% if not forloop.last %}<hr class="my-1 text-muted">{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card p-4 mb-4">
+            <h6 class="fw-bold mb-3 text-success"><i class="bi bi-check-circle me-2"></i>System Integrity</h6>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted small">Database Sync</span>
+                <span class="fw-bold small">Successful</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted small">Last Backup</span>
+                <span class="fw-bold small">14 mins ago</span>
+            </div>
+            <div class="d-flex justify-content-between mb-4">
+                <span class="text-muted small">Active Sessions</span>
+                <span class="fw-bold small">24 Users</span>
+            </div>
+            <p class="text-muted mb-0" style="font-size: 0.75rem;">All core services are currently operating within nominal performance parameters. Next scheduled maintenance in 12 days.</p>
+        </div>
+        
+        <div class="card p-4 border-primary text-center" style="border-style: dashed; border-width: 2px; background-color: #f8fbff;">
+            <i class="bi bi-book fs-3 text-secondary mb-2"></i>
+            <h6 class="fw-bold mb-2">Need help with BookFlow?</h6>
+            <p class="text-muted small mb-3">Check out our internal knowledge base for advanced filtering and bulk management guides.</p>
+            <a href="#" class="text-decoration-none fw-bold">Open Documentation</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    
+    // Bikin gradient warna biru di bawah garis
+    let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(13, 110, 253, 0.2)');
+    gradient.addColorStop(1, 'rgba(13, 110, 253, 0)');
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'Acquisitions',
+                data: [120, 150, 180, 140, 210, 260],
+                borderColor: '#0d6efd',
+                backgroundColor: gradient,
+                borderWidth: 3,
+                tension: 0.4, // Bikin garisnya melengkung halus
+                fill: true,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#0d6efd',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 300,
+                    grid: { color: '#f8f9fa' },
+                    border: { display: false }
+                },
+                x: {
+                    grid: { display: false },
+                    border: { display: false }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

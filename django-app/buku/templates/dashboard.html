@@ -4,166 +4,322 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BookFlow - Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; overflow-x: hidden; }
+        .sidebar { width: 250px; background-color: #ffffff; border-right: 1px solid #e2e8f0; height: 100vh; }
+        .nav-link-custom { color: #64748b; font-weight: 500; padding: 10px 16px; border-radius: 8px; margin: 4px 16px; text-decoration: none; display: flex; align-items: center; gap: 12px; font-size: 0.9rem; transition: 0.2s; }
+        .nav-link-custom:hover { background-color: #f1f5f9; color: #1e293b; }
+        .nav-link-active { background-color: #eff6ff; color: #3b82f6; font-weight: 600; }
+        .top-header { background-color: #ffffff; border-bottom: 1px solid #e2e8f0; height: 70px; }
+        
+        /* Custom Card Formats */
+        .card-custom { border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); background: #fff; }
+        .dashed-card { border: 1.5px dashed #cbd5e1; background-color: #ffffff; border-radius: 12px; }
+        
+        .icon-box { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 1.1rem; }
+        .badge-soft { font-size: 0.7rem; font-weight: 600; padding: 4px 8px; border-radius: 6px; }
+        
+        .workflow-card-active { background-color: #3aa1ff; color: white; border: none; }
+        .workflow-card { border: 1px solid #e2e8f0; background-color: #ffffff; transition: 0.2s; }
+        .workflow-card:hover { border-color: #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+
+        /* Book Cover Placeholder styling */
+        .book-cover {
+            width: 45px; 
+            height: 65px; 
+            background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
-<body class="bg-[#F8FAFC] text-[#1E293B]">
+<body class="d-flex">
 
-    <div class="flex min-h-screen">
-        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col sticky h-screen top-0">
-            <div class="p-6 flex items-center gap-3">
-                <div class="w-10 h-10 bg-[#0047AB] rounded-lg flex items-center justify-center text-white shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
+    <aside class="sidebar position-sticky top-0 d-flex flex-column">
+        <div class="p-4 d-flex align-items-center gap-2 mb-2">
+            <div class="bg-primary text-white rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;"><i class="bi bi-bookshelf"></i></div>
+            <span class="fs-5 fw-bold text-primary">BookFlow</span>
+        </div>
+        <nav class="flex-grow-1">
+            <a href="#" class="nav-link-custom nav-link-active"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <a href="{% url 'catalog' %}" class="nav-link-custom"><i class="bi bi-book"></i> Book Catalog</a>
+            <a href="{% url 'add_book' %}" class="nav-link-custom"><i class="bi bi-plus-circle"></i> Add New Book</a>
+        </nav>
+        <div class="mt-auto mb-4 border-top pt-3">
+            <a href="#" class="nav-link-custom"><i class="bi bi-gear"></i> Settings</a>
+            <a href="#" class="nav-link-custom text-danger"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </div>
+    </aside>
+
+    <main class="flex-grow-1">
+        <header class="top-header px-4 d-flex justify-content-between align-items-center sticky-top z-1">
+            <div class="position-relative" style="width: 320px;">
+                <i class="bi bi-search position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%);"></i>
+                <input type="text" placeholder="Search books, authors, ISBN..." class="form-control bg-light border-0 py-2" style="padding-left: 36px; font-size: 0.85rem; border-radius: 8px;">
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge border border-primary text-primary bg-white rounded-pill px-3 py-2 fw-medium d-flex align-items-center gap-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-check-circle-fill"></i> All Systems Operational
+                </span>
+                <i class="bi bi-bell fs-5 text-muted position-relative ms-2">
+                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger rounded-circle"></span>
+                </i>
+                <div class="d-flex align-items-center gap-2 ms-3">
+                    <div class="text-end d-none d-md-block">
+                        <p class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">Admin User</p>
+                        <p class="mb-0 text-muted" style="font-size: 0.7rem;">Librarian</p>
+                    </div>
+                    <img src="https://ui-avatars.com/api/?name=Admin+User&background=f1f5f9&color=64748b" class="rounded-circle" width="36" height="36" alt="Profile">
                 </div>
-                <span class="text-xl font-bold tracking-tight text-[#0047AB]">BookFlow</span>
+            </div>
+        </header>
+
+        <div class="p-4 p-lg-5">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="fw-bold text-dark mb-1">System Dashboard</h3>
+                    <p class="text-muted mb-0" style="font-size: 0.9rem;">Welcome back, Admin. Here's what's happening today.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-white border fw-medium btn-sm px-3 shadow-sm"><i class="bi bi-clock-history"></i> History</button>
+                    <button class="btn fw-medium btn-sm px-3 shadow-sm text-white" style="background-color: #3aa1ff;"><i class="bi bi-plus-circle"></i> Quick Add Book</button>
+                </div>
             </div>
 
-            <nav class="flex-1 px-4 space-y-1">
-                <p class="text-[10px] font-semibold text-slate-400 uppercase px-4 mb-2 tracking-widest">Menu</p>
-                <a href="#" class="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl font-medium transition">Dashboard</a>
-                <a href="{% url 'catalog' %}" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl transition">Book Catalog</a>
-                <a href="{% url 'add_book' %}" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl transition">Add New Book</a>
+            <div class="row g-4 mb-4">
+                <div class="col-md-6 col-xl-3">
+                    <div class="card card-custom p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="icon-box bg-primary bg-opacity-10 text-primary"><i class="bi bi-book"></i></div>
+                            <span class="badge badge-soft text-secondary bg-light">+12% from last month</span>
+                        </div>
+                        <p class="text-muted mb-1" style="font-size: 0.8rem;">Total Library Assets</p>
+                        <h3 class="fw-bold mb-0 text-dark">{{ total_buku }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card card-custom p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="icon-box bg-info bg-opacity-10 text-info"><i class="bi bi-people"></i></div>
+                            <span class="badge badge-soft text-secondary bg-light">+5% growth</span>
+                        </div>
+                        <p class="text-muted mb-1" style="font-size: 0.8rem;">Active Borrowers</p>
+                        <h3 class="fw-bold mb-0 text-dark">1,284</h3>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card card-custom p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="icon-box bg-primary bg-opacity-10 text-primary"><i class="bi bi-plus-circle"></i></div>
+                            <span class="badge badge-soft text-danger bg-danger bg-opacity-10">-8% below target</span>
+                        </div>
+                        <p class="text-muted mb-1" style="font-size: 0.8rem;">New Acquisitions</p>
+                        <h3 class="fw-bold mb-0 text-dark">45</h3>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="card card-custom p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="icon-box bg-primary bg-opacity-10 text-primary"><i class="bi bi-exclamation-circle"></i></div>
+                            <span class="badge badge-soft text-secondary bg-light">+resolved 4 today</span>
+                        </div>
+                        <p class="text-muted mb-1" style="font-size: 0.8rem;">Overdue Records</p>
+                        <h3 class="fw-bold mb-0 text-dark">12</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-lg-8">
+                    <div class="card card-custom p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-4">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">Acquisition Trends</h6>
+                                <p class="text-muted mb-0" style="font-size: 0.8rem;">Monthly book growth analysis for H1 2024</p>
+                            </div>
+                            <div class="text-dark fw-bold" style="font-size: 0.8rem;"><i class="bi bi-graph-up-arrow"></i> +24% Growth</div>
+                        </div>
+                        <div style="height: 280px; width: 100%;">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-journal-text text-primary me-2"></i>Librarian Workflows</h6>
+                    <div class="d-flex flex-column gap-3">
+                        <div class="card card-custom workflow-card-active p-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="icon-box bg-white bg-opacity-25 text-white"><i class="bi bi-plus-circle"></i></div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">Add New Volume</h6>
+                                    <p class="mb-0 text-white-50" style="font-size: 0.75rem;">Manual entry for new book arrivals</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-custom workflow-card p-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="icon-box bg-primary bg-opacity-10 text-primary"><i class="bi bi-file-earmark-text"></i></div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark">Generate Monthly Report</h6>
+                                    <p class="mb-0 text-muted" style="font-size: 0.75rem;">Export library stats as PDF/Excel</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-custom workflow-card p-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="icon-box bg-primary bg-opacity-10 text-primary"><i class="bi bi-cloud-arrow-up"></i></div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark">Bulk CSV Import</h6>
+                                    <p class="mb-0 text-muted" style="font-size: 0.75rem;">Upload large datasets via spreadsheet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
                 
-                <p class="text-[10px] font-semibold text-slate-400 uppercase px-4 mt-6 mb-2 tracking-widest">Library</p>
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl transition">Members</a>
-                <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl transition">Reports</a>
-            </nav>
-
-            <div class="p-4 border-t border-slate-100">
-                <button class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-red-500 transition text-sm">Logout</button>
-            </div>
-        </aside>
-
-        <main class="flex-1">
-            <header class="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
-                <div class="relative w-96">
-                    <input type="text" placeholder="Search books, authors, ISBN..." class="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition outline-none">
-                </div>
-                
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
-                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                        <span class="text-[10px] font-bold text-emerald-700 uppercase tracking-tighter">AI Systems Operational</span>
-                    </div>
-                    <div class="flex items-center gap-3 pl-6 border-l border-slate-200">
-                        <div class="text-right">
-                            <p class="text-sm font-bold text-slate-700">Alya</p>
-                            <p class="text-[10px] text-slate-400 font-medium">Librarian</p>
+                <div class="col-lg-8">
+                    <div class="card card-custom p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">Recently Added Books</h6>
+                                <p class="text-muted mb-0" style="font-size: 0.8rem;">Latest entries into the catalog system</p>
+                            </div>
+                            <a href="{% url 'catalog' %}" class="text-decoration-none fw-bold" style="color: #3aa1ff; font-size: 0.85rem;">View All Catalog</a>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">AL</div>
-                    </div>
-                </div>
-            </header>
-
-            <div class="p-8 max-w-7xl mx-auto">
-                <div class="flex justify-between items-center mb-8">
-                    <div>
-                        <h1 class="text-2xl font-black text-slate-800">System Dashboard</h1>
-                        <p class="text-slate-500 text-sm">Welcome back, Alya. Here's what's happening today.</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <button class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-50 transition">History</button>
-                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow-lg shadow-blue-200 transition">+ Quick Add Book</button>
+                        
+                        <div class="d-flex flex-column">
+                            {% for buku in buku_terbaru %}
+                            <div class="d-flex justify-content-between align-items-center py-3 {% if not forloop.last %}border-bottom border-light{% endif %}">
+                                <div class="d-flex align-items-center gap-4">
+                                    <div class="book-cover">
+                                        {{ buku.judul|slice:":1"|upper }}
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold text-dark mb-1" style="font-size: 0.9rem;">{{ buku.judul }}</h6>
+                                        <p class="text-muted mb-0" style="font-size: 0.75rem;">{{ buku.penulis }} • {{ buku.tahun_terbit }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <p class="text-muted fw-medium mb-1" style="font-size: 0.7rem;">Today</p>
+                                    <span class="badge border border-secondary border-opacity-25 text-dark fw-bold rounded-pill px-3 py-1" style="background-color: #ffffff; font-size: 0.6rem;">New</span>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-muted small text-center my-4">Belum ada data buku.</p>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                            </div>
-                            <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">+1.2k from last month</span>
+                <div class="col-lg-4 d-flex flex-column gap-4">
+                    
+                    <div class="card card-custom p-4">
+                        <h6 class="fw-bold mb-4" style="color: #3aa1ff;"><i class="bi bi-check-circle me-2"></i>System Integrity</h6>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted" style="font-size: 0.8rem;">Database Sync</span>
+                            <span class="fw-bold text-dark" style="font-size: 0.8rem;">Successful</span>
                         </div>
-                        <p class="text-3xl font-black text-slate-800">{{ total_buku }}</p>
-                        <p class="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">Total Library Assets</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted" style="font-size: 0.8rem;">Last Backup</span>
+                            <span class="fw-bold text-dark" style="font-size: 0.8rem;">14 mins ago</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <span class="text-muted" style="font-size: 0.8rem;">Active Sessions</span>
+                            <span class="fw-bold text-dark" style="font-size: 0.8rem;">24 Users</span>
+                        </div>
+                        
+                        <p class="text-muted mb-0" style="font-size: 0.7rem; line-height: 1.6;">
+                            All core services are currently operating within nominal performance parameters. Next scheduled maintenance in 12 days.
+                        </p>
                     </div>
 
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                            </div>
-                            <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">+5% growth</span>
+                    <div class="card dashed-card p-4 text-center">
+                        <div class="icon-box bg-white border mx-auto mb-3 text-secondary shadow-sm" style="width: 44px; height: 44px;">
+                            <i class="bi bi-book"></i>
                         </div>
-                        <p class="text-3xl font-black text-slate-800">1,284</p>
-                        <p class="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">Active Borrowers</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="p-2 bg-orange-50 text-orange-600 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded">3% below target</span>
-                        </div>
-                        <p class="text-3xl font-black text-slate-800">45</p>
-                        <p class="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">New Acquisitions</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-red-600">
-                        <div class="flex justify-between items-start mb-4 text-red-600">
-                            <div class="p-2 bg-red-50 rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <span class="text-[10px] font-bold bg-red-50 px-2 py-1 rounded">+resolved 4 today</span>
-                        </div>
-                        <p class="text-3xl font-black text-slate-800">12</p>
-                        <p class="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider">Overdue Records</p>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-bold text-slate-800">Acquisition Trends</h3>
-                            <span class="text-xs font-bold text-emerald-500">+24% Growth</span>
-                        </div>
-                        <div class="h-64 bg-gradient-to-t from-blue-50/50 to-transparent rounded-xl border-b-2 border-blue-500 relative flex items-end justify-between px-4 pb-2">
-                            <div class="w-12 bg-blue-200 h-1/4 rounded-t-lg"></div>
-                            <div class="w-12 bg-blue-300 h-2/4 rounded-t-lg"></div>
-                            <div class="w-12 bg-blue-400 h-3/4 rounded-t-lg"></div>
-                            <div class="w-12 bg-blue-200 h-2/5 rounded-t-lg"></div>
-                            <div class="w-12 bg-blue-500 h-full rounded-t-lg shadow-lg shadow-blue-200"></div>
-                        </div>
-                    </div>
-
-                    <div class="space-y-6">
-                        <div class="bg-blue-600 p-8 rounded-3xl shadow-xl shadow-blue-100 text-white">
-                            <h3 class="font-bold text-lg mb-4">Librarian Workflows</h3>
-                            <div class="space-y-3">
-                                <button class="w-full bg-white/10 hover:bg-white/20 p-4 rounded-2xl text-left text-sm font-medium transition flex items-center justify-between group">
-                                    <span>Add New Volume</span>
-                                    <span class="opacity-0 group-hover:opacity-100 transition">→</span>
-                                </button>
-                                <button class="w-full bg-white/10 hover:bg-white/20 p-4 rounded-2xl text-left text-sm font-medium transition flex items-center justify-between group">
-                                    <span>Generate Monthly Report</span>
-                                    <span class="opacity-0 group-hover:opacity-100 transition">→</span>
-                                </button>
-                                <button class="w-full bg-white/10 hover:bg-white/20 p-4 rounded-2xl text-left text-sm font-medium transition flex items-center justify-between group">
-                                    <span>Bulk CSV Import</span>
-                                    <span class="opacity-0 group-hover:opacity-100 transition">→</span>
-                                </button>
-                            </div>
-                        </div>
+                        <h6 class="fw-bold text-dark mb-2" style="font-size: 0.9rem;">Need help with BookFlow?</h6>
+                        <p class="text-muted mb-3 mx-auto" style="font-size: 0.75rem; line-height: 1.6; max-width: 90%;">
+                            Check out our internal knowledge base for advanced filtering and bulk management guides.
+                        </p>
+                        <a href="#" class="text-decoration-none fw-bold" style="color: #3aa1ff; font-size: 0.8rem;">Open Documentation</a>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+            
+            <footer class="mt-5 pt-4 border-top d-flex justify-content-between align-items-center text-muted" style="font-size: 0.75rem;">
+                <span>© 2026 BookFlow Management System. All rights reserved.</span>
+                <div class="d-flex gap-4">
+                    <a href="#" class="text-muted text-decoration-none">Privacy Policy</a>
+                    <a href="#" class="text-muted text-decoration-none">Terms of Service</a>
+                    <a href="#" class="text-muted text-decoration-none">Support</a>
+                </div>
+            </footer>
+        </div>
+    </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        let gradient = ctx.createLinearGradient(0, 0, 0, 280);
+        gradient.addColorStop(0, 'rgba(58, 161, 255, 0.3)');
+        gradient.addColorStop(1, 'rgba(58, 161, 255, 0.0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Acquisitions',
+                    data: [120, 150, 180, 140, 210, 250],
+                    borderColor: '#3aa1ff',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#3aa1ff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 300,
+                        ticks: { stepSize: 65, color: '#94a3b8', font: { size: 10 } },
+                        grid: { color: '#f1f5f9', drawBorder: false },
+                        border: { display: false }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8', font: { size: 10 } },
+                        grid: { display: false },
+                        border: { display: false }
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html>

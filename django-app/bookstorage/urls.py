@@ -22,5 +22,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.dashboard, name='dashboard'),
     path('catalog/', views.catalog, name='catalog'),       # Alamat: /catalog/
-    path('add/', views.add_book, name='add_book'),         # Alamat: /add/
+    path('/add/', views.add_book, name='add_book'),         # Alamat: /add/
 ]
