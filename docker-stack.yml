@@ -90,7 +90,11 @@ services:
       placement:
         constraints:
           - node.hostname == worker2
-      restart_policy: on-failure
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
 
   storage-minio:
     image: ${MINIO_IMAGE:-danurar1/bookstorage-minio:latest}
