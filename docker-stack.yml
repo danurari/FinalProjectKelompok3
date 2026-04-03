@@ -1,1 +1,140 @@
 # Ini bakal diisi stacknya
+version: "3.8"
+
+networks:
+  bookstorage_network:
+    driver: overlay
+
+volumes:
+  postgres_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+
+secrets:
+  postgres_user:
+    external: true
+  postgres_password:
+    external: true
+  postgres_db:
+    external: true
+  minio_root_user:
+    external: true
+  minio_root_password:
+    external: true
+  django_secret_key:
+    external: true
+  nginx_ssl_cert:
+    external: true
+  nginx_ssl_key:
+    external: true
+  grafana_admin_user:
+    external: true
+  grafana_admin_password:
+    external: true
+
+services:
+  proxy-nginx:
+    image: ${NGINX_IMAGE:-dzakky1/bookstorage-nginx:latest}
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - bookstorage_network
+    secrets:
+      - nginx_ssl_cert
+      - nginx_ssl_key
+    depends-on:
+      - backend-django
+    deploy:
+      placements:
+        constraints:
+          - node.role == manager
+
+  backend-django:
+    image: ${DJANGO_IMAGE:-alyayes/bookstorage-django:latest}
+    networks:
+      - bookstorage_network
+    secrets:
+      - django_secret_key
+      - postgres_user
+      - postgres_password
+      - postgres_db
+      - minio_root_user
+      - minio_root_password
+    enviroment:
+      - DB_HOST=database-postgres
+      - MINIO_URL=http://storage-minio:9000
+    deploy:
+      replicas: 3
+      placement:
+        constraints:
+          - node.hostname != worker2
+        max_replicas_per_node: 2
+
+  database-postgres:
+    image: ${POSTGRES_IMAGE:-danurar1/bookstorage-postgres:latest}
+    networks:
+      - bookstorage_network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data/
+    secrets:
+      - postgres_user
+      - postgres_password
+      - postgres_db
+    enviroment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB_FILE: /run/secrets/postgres_db
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == worker2
+
+  storage-minio:
+    image: ${MINIO_IMAGE:-danurar1/bookstorage-minio:latest}
+    networks:
+      - bookstorage_network
+    volumes:
+      - minio_data:/data
+    secrets:
+      - minio_root_user
+      - minio_root_password
+    enviroment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_root_user
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_root_password
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == worker2
+
+  monitoring-prometheus:
+    image: ${PROMETHEUS_IMAGE:-dzakky1/bookstorage-prometheus:latest}
+    networks:
+      - bookstorage_networks
+    volumes:
+      - prometheus_data:/prometheus
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  monitoring-grafana:
+    image: ${GRAFANA_IMAGE:-dzakky1/bookstorage-grafana:latest}
+    networks:
+      - bookstorage_network
+    volumes:
+      - grafana_data:/var/lib/grafana
+    secrets:
+      - grafana_admin_user
+      - grafana_admin_password
+    enviroment:
+      GF_SECURITY_ADMIN_USER__FILE: /run/secrets/grafana_admin_user
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_SERVER_DOMAIN: layananbuku.netdev
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
