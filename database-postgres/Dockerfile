@@ -2,8 +2,8 @@
 FROM postgres:15-alpine
 
 # Healthcheck For checking if docker swarm knowing the DB is ready or not
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD pg_isready -U postgres || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD pg_isready -U $$(cat /run/secrets/postgres_user) -d $$(cat /run/secrets/postgres_db) || exit 1
 
 # Set timezone to Indonesian times
 ENV TZ=Asia/Jakarta

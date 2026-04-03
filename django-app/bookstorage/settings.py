@@ -93,14 +93,14 @@ WSGI_APPLICATION = 'bookstorage.wsgi.application'
 # }
 
 DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRES_DB', 'namadb_default'),
-            'USER': os.environ.get('POSTGRES_USER', 'user_default'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'pass_default'),
-            'HOST': os.environ.get('DB_HOST', 'database-postgres'),
-            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-        }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': get_secret('postgres_db', 'namadb_default'),
+        'USER': get_secret('postgres_user', 'user_default'),
+        'PASSWORD': get_secret('postgres_password', 'pass_default'),
+        'HOST': os.environ.get('DB_HOST', 'database-postgres'), # Host tetap env biasa gak apa-apa
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+    }
 }
 
 # Password validation

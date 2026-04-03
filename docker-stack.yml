@@ -90,6 +90,7 @@ services:
       placement:
         constraints:
           - node.hostname == worker2
+      restart_policy: on-failure
 
   storage-minio:
     image: ${MINIO_IMAGE:-danurar1/bookstorage-minio:latest}
