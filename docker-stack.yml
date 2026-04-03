@@ -111,7 +111,7 @@ services:
   monitoring-prometheus:
     image: ${PROMETHEUS_IMAGE:-dzakky1/bookstorage-prometheus:latest}
     networks:
-      - bookstorage_networks
+      - bookstorage_network
     volumes:
       - prometheus_data:/prometheus
     deploy:
