@@ -83,9 +83,14 @@ jobs:
         with:
           context: ./database-postgres
           push: true
-          tags: ${{ secrets.DOCKERHUB_USER_DANUR }}/bookstorage:${{ env.IMAGE_TAG }}
+          tags: ${{ secrets.DOCKERHUB_USER_DANUR }}/bookstorage-postgresql:${{ env.IMAGE_TAG }}
 
-      # buat step untuk build dan push image minio (devops belom tau contextnya ada di mana)
+      - name: Build & Push image postgresql
+        uses: docker/build-push-action@v4
+        with:
+          context: ./minio_storage
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USER_DANUR }}/bookstorage-minio:${{ env.IMAGE_TAG }}
 
   # Job 4 : build & push proxy & monitoring (devops belom tau contextnya (Dockerfile) ada di mana )
   build-proxy-monitoring:
