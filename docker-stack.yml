@@ -44,7 +44,7 @@ services:
     secrets:
       - nginx_ssl_cert
       - nginx_ssl_key
-    depends-on:
+    depends_on:
       - backend-django
     deploy:
       placement:
