@@ -15,12 +15,13 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from buku import views
 
 urlpatterns = [
+    path('', include('django_prometheus.urls')),
     path('admin/', admin.site.urls),
     path('', views.dashboard, name='dashboard'),
     path('catalog/', views.catalog, name='catalog'),       # Alamat: /catalog/
-    path('/add/', views.add_book, name='add_book'),         # Alamat: /add/
+    path('/add/', views.add_book, name='add_book'),         # Alamat: /add/           
 ]
