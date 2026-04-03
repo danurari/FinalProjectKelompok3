@@ -8,7 +8,7 @@ ENV GF_DEFAULT_TIMEZONE=Asia/Jakarta
 
 COPY provisioning/ /etc/grafana/provisioning/
 
-COPY entrypoint.sh
+COPY entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 
