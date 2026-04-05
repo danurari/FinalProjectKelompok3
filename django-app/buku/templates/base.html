@@ -1,209 +1,179 @@
-{% extends 'base.html' %}
-
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1 class="fw-bold text-dark mb-1">System Dashboard</h1>
-        <p class="text-secondary mb-0">Welcome back, Admin. Here's what's happening today.</p>
-    </div>
-    <div class="d-flex gap-2">
-        <button class="btn btn-outline-secondary bg-white fw-medium"><i class="bi bi-clock-history"></i> History</button>
-        <button class="btn btn-primary fw-medium"><i class="bi bi-plus-circle"></i> Quick Add Book</button>
-    </div>
-</div>
-
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="card p-3 h-100">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <i class="bi bi-book fs-4 text-primary bg-primary-subtle rounded p-2"></i>
-                <span class="badge badge-soft-success text-success">+12% from last month</span>
-            </div>
-            <p class="text-muted small mb-1 mt-2">Total Library Assets</p>
-            <h3 class="fw-bold mb-0">{{ total_assets }}</h3>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card p-3 h-100">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <i class="bi bi-people fs-4 text-info bg-info-subtle rounded p-2"></i>
-                <span class="badge badge-soft-success text-success">+5% growth</span>
-            </div>
-            <p class="text-muted small mb-1 mt-2">Active Borrowers</p>
-            <h3 class="fw-bold mb-0">{{ active_borrowers }}</h3>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card p-3 h-100">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <i class="bi bi-plus-square fs-4 text-warning bg-warning-subtle rounded p-2"></i>
-                <span class="badge badge-soft-danger text-danger">-8% below target</span>
-            </div>
-            <p class="text-muted small mb-1 mt-2">New Acquisitions</p>
-            <h3 class="fw-bold mb-0">{{ new_acquisitions }}</h3>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card p-3 h-100">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <i class="bi bi-exclamation-circle fs-4 text-danger bg-danger-subtle rounded p-2"></i>
-                <span class="badge badge-soft-success text-success">+resolved 4 today</span>
-            </div>
-            <p class="text-muted small mb-1 mt-2">Overdue Records</p>
-            <h3 class="fw-bold mb-0">{{ overdue_records }}</h3>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4 mb-4">
-    <div class="col-lg-8">
-        <div class="card p-4 h-100">
-            <div class="d-flex justify-content-between align-items-start mb-4">
-                <div>
-                    <h5 class="fw-bold mb-1">Acquisition Trends</h5>
-                    <p class="text-muted small mb-0">Monthly book growth analysis for H1 2024</p>
-                </div>
-                <span class="fw-bold text-success small"><i class="bi bi-graph-up-arrow"></i> +24% Growth</span>
-            </div>
-            <canvas id="trendChart" height="100"></canvas>
-        </div>
-    </div>
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BookFlow{% endblock %}</title>
     
-    <div class="col-lg-4">
-        <h6 class="fw-bold mb-3"><i class="bi bi-ui-checks-grid text-primary me-2"></i>Librarian Workflows</h6>
-        <div class="d-flex flex-column gap-3">
-            <div class="card border-0 bg-primary text-white p-3 shadow-sm" style="cursor: pointer;">
-                <div class="d-flex align-items-center gap-3">
-                    <i class="bi bi-plus-circle fs-3 text-white-50"></i>
-                    <div>
-                        <h6 class="fw-bold mb-0">Add New Volume</h6>
-                        <small class="text-white-50">Manual entry for new book arrivals</small>
-                    </div>
-                </div>
-            </div>
-            <div class="card p-3 shadow-sm hover-effect" style="cursor: pointer;">
-                <div class="d-flex align-items-center gap-3">
-                    <i class="bi bi-file-earmark-bar-graph fs-3 text-primary bg-primary-subtle rounded p-2"></i>
-                    <div>
-                        <h6 class="fw-bold mb-0 text-dark">Generate Monthly Report</h6>
-                        <small class="text-muted">Export library stats as PDF/Excel</small>
-                    </div>
-                </div>
-            </div>
-            <div class="card p-3 shadow-sm hover-effect" style="cursor: pointer;">
-                <div class="d-flex align-items-center gap-3">
-                    <i class="bi bi-cloud-arrow-up fs-3 text-info bg-info-subtle rounded p-2"></i>
-                    <div>
-                        <h6 class="fw-bold mb-0 text-dark">Bulk CSV Import</h6>
-                        <small class="text-muted">Upload large datasets via spreadsheet</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4">
-    <div class="col-lg-8">
-        <div class="card p-4 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h5 class="fw-bold mb-1">Recently Added Books</h5>
-                    <p class="text-muted small mb-0">Latest entries into the catalog system</p>
-                </div>
-                <a href="#" class="text-decoration-none small fw-medium">View All Catalog</a>
-            </div>
-            
-            <div class="d-flex flex-column gap-3">
-                {% for book in recent_books %}
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="bg-secondary rounded" style="width: 40px; height: 50px;"></div> <div>
-                            <h6 class="fw-bold text-dark mb-0">{{ book.title }}</h6>
-                            <small class="text-muted">{{ book.author }} • {{ book.genre }}</small>
-                        </div>
-                    </div>
-                    <div class="text-end">
-                        <small class="text-muted d-block mb-1">{{ book.time }}</small>
-                        <span class="badge border text-dark fw-normal rounded-pill">New</span>
-                    </div>
-                </div>
-                {% if not forloop.last %}<hr class="my-1 text-muted">{% endif %}
-                {% endfor %}
-            </div>
-        </div>
-    </div>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <div class="col-lg-4">
-        <div class="card p-4 mb-4">
-            <h6 class="fw-bold mb-3 text-success"><i class="bi bi-check-circle me-2"></i>System Integrity</h6>
-            <div class="d-flex justify-content-between mb-2">
-                <span class="text-muted small">Database Sync</span>
-                <span class="fw-bold small">Successful</span>
-            </div>
-            <div class="d-flex justify-content-between mb-2">
-                <span class="text-muted small">Last Backup</span>
-                <span class="fw-bold small">14 mins ago</span>
-            </div>
-            <div class="d-flex justify-content-between mb-4">
-                <span class="text-muted small">Active Sessions</span>
-                <span class="fw-bold small">24 Users</span>
-            </div>
-            <p class="text-muted mb-0" style="font-size: 0.75rem;">All core services are currently operating within nominal performance parameters. Next scheduled maintenance in 12 days.</p>
-        </div>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
         
-        <div class="card p-4 border-primary text-center" style="border-style: dashed; border-width: 2px; background-color: #f8fbff;">
-            <i class="bi bi-book fs-3 text-secondary mb-2"></i>
-            <h6 class="fw-bold mb-2">Need help with BookFlow?</h6>
-            <p class="text-muted small mb-3">Check out our internal knowledge base for advanced filtering and bulk management guides.</p>
-            <a href="#" class="text-decoration-none fw-bold">Open Documentation</a>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    const ctx = document.getElementById('trendChart').getContext('2d');
-    
-    // Bikin gradient warna biru di bawah garis
-    let gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(13, 110, 253, 0.2)');
-    gradient.addColorStop(1, 'rgba(13, 110, 253, 0)');
-
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                label: 'Acquisitions',
-                data: [120, 150, 180, 140, 210, 260],
-                borderColor: '#0d6efd',
-                backgroundColor: gradient,
-                borderWidth: 3,
-                tension: 0.4, // Bikin garisnya melengkung halus
-                fill: true,
-                pointBackgroundColor: '#ffffff',
-                pointBorderColor: '#0d6efd',
-                pointRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 300,
-                    grid: { color: '#f8f9fa' },
-                    border: { display: false }
-                },
-                x: {
-                    grid: { display: false },
-                    border: { display: false }
-                }
-            }
+        /* Sidebar Styling */
+        .sidebar { 
+            width: 260px; 
+            background-color: #ffffff; 
+            border-right: 1px solid #e2e8f0; 
+            height: 100vh; 
+            position: fixed; 
+            left: 0; 
+            top: 0; 
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
         }
-    });
-</script>
-{% endblock %}
+
+        .brand-section { padding: 24px; }
+        .brand-logo { color: #3b82f6; font-weight: 700; font-size: 1.25rem; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+
+        .nav-link-custom { 
+            color: #64748b; 
+            font-weight: 500; 
+            padding: 12px 16px; 
+            border-radius: 10px; 
+            margin: 4px 16px; 
+            text-decoration: none; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            transition: 0.2s; 
+            font-size: 0.9rem; 
+        }
+
+        .nav-link-custom:hover { background-color: #f1f5f9; color: #1e293b; }
+
+        .nav-link-active { 
+            background-color: #3b82f6 !important; 
+            color: #ffffff !important; 
+            font-weight: 600; 
+        }
+
+        /* Logout Section */
+        .logout-section { 
+            padding: 20px; 
+            border-top: 1px solid #e2e8f0; 
+            margin-top: auto; 
+        }
+
+        .btn-logout { 
+            color: #dc3545; 
+            text-decoration: none; 
+            font-weight: 600; 
+            font-size: 0.95rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-start; 
+            gap: 12px;
+            background: none;
+            border: none;
+            width: 100%;
+            padding: 12px 16px;
+        }
+
+        /* Main Layout */
+        .main-wrapper { margin-left: 260px; min-height: 100vh; width: calc(100% - 260px); }
+        
+        .top-navbar { 
+            background: #ffffff; 
+            border-bottom: 1px solid #e2e8f0; 
+            height: 70px; 
+            padding: 0 30px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-end; 
+            position: sticky; 
+            top: 0; 
+            z-index: 900;
+        }
+
+        /* --- DASHBOARD CSS --- */
+        .card-stats { 
+            border: 1px solid #e2e8f0; 
+            border-radius: 12px; 
+            background: white; 
+            padding: 16px; 
+            height: 100%; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03); 
+            display: flex;
+            flex-direction: column;
+        }
+        .icon-box-round { 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 6px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1rem; 
+            margin-bottom: 10px;
+        }
+        .card-list { border: 1px solid #e2e8f0; border-radius: 12px; background: white; padding: 20px; }
+        .book-item { padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .book-item:last-child { border-bottom: none; }
+        
+        .badge-new { background-color: #fef9c3; color: #854d0e; font-size: 0.6rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 6px; }
+        .workflow-header { background-color: #3b82f6; color: white; border-radius: 12px 12px 0 0; padding: 15px 20px; border: none; }
+        .workflow-body { background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; padding: 5px 15px 15px 15px; }
+        .workflow-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; margin-top: 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s; text-decoration: none; color: inherit; }
+        .workflow-item:hover { border-color: #3b82f6; background-color: #f8fafc; }
+        .tips-card { background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px; margin-top: 15px; font-size: 0.8rem; }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar shadow-sm">
+        <div class="brand-section">
+            <a href="{% url 'dashboard' %}" class="brand-logo">
+                <i class="bi bi-box-seam-fill"></i> BookFlow
+            </a>
+        </div>
+
+        <nav class="flex-grow-1">
+            <a href="{% url 'dashboard' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'dashboard' %}nav-link-active{% endif %}">
+                <i class="bi bi-grid-1x2-fill"></i> Dashboard
+            </a>
+            <a href="{% url 'catalog' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'catalog' %}nav-link-active{% endif %}">
+                <i class="bi bi-stack"></i> Book Catalog
+            </a>
+            <a href="{% url 'add_book' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'add_book' %}nav-link-active{% endif %}">
+                <i class="bi bi-plus-circle"></i> Add New Book
+            </a>
+        </nav>
+
+        <div class="logout-section">
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn-logout">
+                    <i class="bi bi-box-arrow-left"></i> Logout
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <header class="top-navbar">
+            <div class="d-flex align-items-center gap-2">
+                <div class="text-end">
+                    <p class="mb-0 fw-bold small">{{ user.username }}</p>
+                    <p class="mb-0 text-muted" style="font-size: 0.7rem;">Administrator</p>
+                </div>
+                <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=eff6ff&color=3b82f6" class="rounded-circle border" width="38" height="38">
+            </div>
+        </header>
+
+        <main class="p-4 p-lg-5">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

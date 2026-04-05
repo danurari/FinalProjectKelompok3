@@ -140,12 +140,17 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STORAGES = {
     "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
+
+# 2. Tambahkan/Pastikan baris ini ada (untuk akses gambar di browser)
+#STATIC_URL = 'static/'
+#MEDIA_URL = '/media/'
+#MEDIA_ROOT = BASE_DIR / 'media'
 
 AWS_ACCESS_KEY_ID = get_secret('minio_root_user', 'admin')
 AWS_SECRET_ACCESS_KEY = get_secret('minio_root_password', 'admin')
