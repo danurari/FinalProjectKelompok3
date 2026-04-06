@@ -160,4 +160,4 @@ AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_URL', 'http://localhost:9000')
 AWS_S3_FILE_OVERWRITE = False
 AWS_S3_USE_SSL = False
 AWS_S3_ADDRESSING_STYLE = 'path'
-AWS_S3_CUSTOM_DOMAIN = f"layananbuku.netdev:9000/{AWS_STORAGE_BUCKET_NAME}"
+AWS_S3_CUSTOM_DOMAIN = "layananbuku.netdev"
