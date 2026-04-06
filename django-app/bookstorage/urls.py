@@ -22,6 +22,7 @@ from django.contrib.auth import views as auth_views
 from buku import views
 
 urlpatterns = [
+    path('', include('django_prometheus.urls')),
     path('admin/', admin.site.urls),
     path('', views.dashboard, name='dashboard'),
     path('/catalog/', views.catalog, name='catalog'),       # Alamat: /catalog/
