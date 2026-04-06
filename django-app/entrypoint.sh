@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Running migrations..."
 python manage.py migrate --noinput
+echo "Creating SuperUser...."
+python manage.py createsuperuser --noinput || true
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 echo "Starting gunicorn..."

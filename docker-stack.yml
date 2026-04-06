@@ -65,6 +65,9 @@ services:
     environment:
       - DB_HOST=database-postgres
       - MINIO_URL=http://storage-minio:9000
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_EMAIL=admin@layananbuku.netdev
+      - DJANGO_SUPERUSER_PASSWORD=AdminKuat123!
     deploy:
       replicas: 3
       placement:
@@ -118,6 +121,7 @@ services:
     environment:
       MINIO_ROOT_USER_FILE: /run/secrets/minio_root_user
       MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_root_password
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
     deploy:
       placement:
         constraints:
@@ -145,7 +149,7 @@ services:
       - grafana_admin_password
     environment:
       - GF_SERVER_DOMAIN=layananbuku.netdev
-      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/grafana/
+      - GF_SERVER_ROOT_URL=https://layananbuku.netdev/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
     deploy:
       placement:
