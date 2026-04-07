@@ -4,11 +4,10 @@
 
 {% block extra_css %}
 <style>
-    /* Mengurangi padding atas kontainer agar konten lebih naik */
     .book-container-detail { 
         max-width: 1000px; 
         margin: 0 auto; 
-        padding-top: 1.5rem; /* Dikurangi dari default main p-4 */
+        padding-top: 1.5rem; 
     }
     
     .back-link { font-size: 0.9rem; color: #6b7280; text-decoration: none; transition: 0.2s; font-weight: 500; display: inline-flex; align-items: center; margin-bottom: 1rem; }
@@ -22,7 +21,6 @@
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
 
-    /* Mengurangi padding sisi kiri (cover) */
     .cover-side { 
         background: #ffffff; 
         padding: 30px; 
@@ -48,11 +46,10 @@
         background-color: #f3f4f6;
     }
 
-    /* Mengurangi padding sisi kanan (info) */
     .info-side { padding: 35px 40px; }
     
     .book-title-detail { 
-        font-size: 2.2rem; /* Sedikit dikecilkan agar lebih compact */
+        font-size: 2.2rem; 
         font-weight: 800; 
         letter-spacing: -0.03em; 
         margin-bottom: 4px; 
@@ -60,7 +57,6 @@
     }
     .book-author-detail { font-size: 1.15rem; color: #6b7280; margin-bottom: 25px; }
 
-    /* Overview Box lebih ringkas */
     .overview-box { 
         background: #f0f9ff; 
         border-radius: 12px; 
@@ -78,7 +74,6 @@
     }
     .overview-text { color: #0c4a6e; line-height: 1.6; font-size: 1rem; }
 
-    /* Grid Spesifikasi lebih rapat */
     .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
     .spec-card { 
         background: white; 
@@ -101,7 +96,6 @@
     .spec-label { font-size: 0.7rem; text-transform: uppercase; color: #6b7280; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 2px; }
     .spec-value { font-size: 1.1rem; font-weight: 800; color: #111827; }
 
-    /* Action Buttons */
     .action-bar { 
         display: flex; 
         align-items: center; 
@@ -134,7 +128,6 @@
 
     <div class="detail-card">
         <div class="row g-0">
-            <!-- Left Side -->
             <div class="col-md-4 cover-side">
                 <div class="img-wrapper-detail">
                     {% if buku.sampul_buku %}
@@ -147,7 +140,6 @@
                 </div>
             </div>
 
-            <!-- Right Side -->
             <div class="col-md-8 info-side">
                 <h1 class="book-title-detail">{{ buku.judul }}</h1>
                 <p class="book-author-detail">by <span class="fw-bold text-primary">{{ buku.penulis }}</span></p>
@@ -190,6 +182,24 @@
     </div>
 </div>
 
-<!-- Modal tetap di bawah -->
-...
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="deleteModalLabel text-dark">Confirm Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4 text-dark">
+        Are you sure you want to delete the <strong>{{ buku.judul }}</strong> book? This action cannot be undone.
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancel</button>
+        <form action="{% url 'delete_book' buku.id %}" method="POST" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger fw-bold px-4">Yes, Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

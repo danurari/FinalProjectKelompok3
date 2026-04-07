@@ -103,6 +103,8 @@ DATABASES = {
     }
 }
 
+
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -149,9 +151,9 @@ STORAGES = {
 }
 
 # 2. Tambahkan/Pastikan baris ini ada (untuk akses gambar di browser)
-#STATIC_URL = 'static/'
-#MEDIA_URL = '/media/'
-#MEDIA_ROOT = BASE_DIR / 'media'
+# STATIC_URL = 'static/'
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = BASE_DIR / 'media'
 
 AWS_ACCESS_KEY_ID = get_secret('minio_root_user', 'admin')
 AWS_SECRET_ACCESS_KEY = get_secret('minio_root_password', 'admin')
