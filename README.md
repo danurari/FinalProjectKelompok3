@@ -24,7 +24,6 @@
 - [Tentang Proyek](#-tentang-proyek)
 - [Arsitektur](#-arsitektur)
 - [Tech Stack](#-tech-stack)
-- [Pembagian Tugas](#-pembagian-tugas)
 - [Prasyarat](#-prasyarat)
 - [Cara Deploy](#-cara-deploy)
 - [Konfigurasi](#-konfigurasi)
@@ -125,18 +124,6 @@ Browser
 | **Node Metrics** | Node Exporter | latest | Metrics CPU, RAM, Disk per node |
 | **Container Metrics** | cAdvisor | latest | Metrics per container |
 
----
-
-## 👥 Pembagian Tugas
-
-| Anggota | Bagian | File yang Dikelola |
-|---------|--------|--------------------|
-| **Abdur** | Orchestration & CI/CD | `docker-compose.yml`, `.github/workflows/` |
-| **Alya** | Backend Django | `backend-django/` |
-| **Danur** | Database & Storage | `database-postgres/`, `storage-minio/` |
-| **Dzakky** | Proxy & Monitoring | `proxy-nginx/`, `monitoring/` |
-
----
 
 ## ✅ Prasyarat
 
@@ -150,6 +137,7 @@ Browser
 
 ### Software yang Dibutuhkan
 
+- Virtual Box versi terbaru
 - Docker Engine 24.x ke atas (semua node)
 - Akses internet untuk pull image
 - Akun DockerHub
@@ -171,7 +159,102 @@ sudo ufw enable
 
 ---
 
-## 🚀 Cara Deploy
+## 📠 Setup Enviroment Virtual Machine
+
+### STEP 1 — Setting Network VirtualBox
+
+Lakukan konfigurasi Network seperti berikut :
+
+| Interface         | IP Address      | Subnet Mask     |
+|------------------ |---------------  |-----------------|
+| Host Only Network |  10.10.10.0     |  255.255.255.0  |
+| NAT Network       |  192.168.0.0/24 |       /24       |
+
+Host Only Network : 
+
+<img width="1835" height="916" alt="HkUVE9Zc-x" src="https://github.com/user-attachments/assets/5d622d9b-c0c3-409d-b6ab-3db31fb15f5c" />
+<br><br>
+
+NAT Network : 
+
+<img width="1919" height="1007" alt="HyzeN5Zc-x" src="https://github.com/user-attachments/assets/c9f15167-f2e3-4b23-a15a-dd20f99193be" />
+
+
+### STEP 2 — Import VM
+
+- **Download BTA-Server.ova**
+link : https://drive.google.com/file/d/18myvWc4yZIphCNK-KaOz3WLCjtQrkOJw/view?pli=1
+- **klik file > import appliance pada virtualbox**
+<img width="283" height="152" alt="S1nH0GDPZg" src="https://github.com/user-attachments/assets/824df1c2-8c35-4ea8-92c6-e0d24f2b8542" />
+<br><br>
+
+- **di import appliance tab, masukkan file .ova yang sudah terdownload.**
+<img width="650" height="578" alt="BkDiCfDwWe" src="https://github.com/user-attachments/assets/c33bbe48-6253-4404-8d69-9da57e9e79c2" />
+<br><br>
+
+- Di bagian setting, rubah namanya menjadi Manager.
+<img width="617" height="470" alt="BJYh4cWqbe" src="https://github.com/user-attachments/assets/a9919bd8-4c80-41f5-ae6e-897cd8423607" />
+<br><br>
+
+- **Jika sudah membuat vm Manager, Selanjutnya clone vm sebanyak 2 kali (Worker1 & Worker2)**
+<img width="1919" height="868" alt="B1vSBqZcWl" src="https://github.com/user-attachments/assets/234eb2c8-6847-4e07-baa6-1430c319d8b9" />
+<br><br>
+
+**Clone VM Worker1 :**
+
+<img width="959" height="624" alt="HyKIS5bcZe" src="https://github.com/user-attachments/assets/83fe3be3-a398-4a2e-a7cb-7a3c5859ae16" />
+<br><br>
+
+**Clone VM Worker2 :**
+
+<img width="933" height="610" alt="rJssH5ZqZx" src="https://github.com/user-attachments/assets/685a25e8-e33d-4348-af01-18e2e5a9624a" />
+<br><br>
+
+- **Jika sudah, jalankan semua vm**
+  
+<img width="1919" height="1011" alt="S1K0Sq-cbx" src="https://github.com/user-attachments/assets/867b6c3d-2400-4a89-9840-2583e9039ccb" />
+<br><br>
+
+ - Konfigurasi ip host-only setiap node (Manager, Worker1 dan Worker2)
+
+Jalankan Perintah berikut : 
+```bash
+sudo nano /etc/netplan/50-cloud-init.yaml
+```
+
+Edit pada bagian **50-cloud-init.yaml** di setiap node.
+
+**Node Manager** :
+```yml
+# This file is generated from information provided by the datasource. Changes
+# to it will not persist across an instance reboot. To disable cloud-init's
+# network configuration capabilities, write a file
+# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
+# network: {config: disabled}
+network:
+    ethernets:
+        enp0s3:
+          addresses:
+- 192.168.0.11/24
+dhcp4: false
+gateway4: 192.168.0.1
+nameservers:
+addresses:
+- 8.8.8.8
+
+addresses:
+- 10.10.10.10/24
+dhcp4: false
+nameservers:
+addresses:
+- 8.8.8.8
+
+version: 2
+```
+
+
+  
+
 
 ### STEP 1 — Install Docker di Semua Node
 
@@ -487,6 +570,8 @@ docker service update \
 # Hapus stack
 docker stack rm kelompok3
 ```
+## 🚀 Cara Deploy
+
 
 ---
 
