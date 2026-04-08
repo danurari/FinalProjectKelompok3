@@ -25,7 +25,9 @@
 - [Arsitektur](#-arsitektur)
 - [Tech Stack](#-tech-stack)
 - [Prasyarat](#-prasyarat)
-- [Cara Deploy](#-cara-deploy)
+- [Setup Environment Virtual Machine](#-setup-environment-virtual-machine)
+- [Docker Installation & Swarm Initialization](#-docker-installation--swarm-initialization)
+- [Create Docker Secret](#-create-docker-secret)
 - [Konfigurasi](#-konfigurasi)
 - [Akses Aplikasi](#-akses-aplikasi)
 - [Monitoring](#-monitoring)
@@ -101,11 +103,11 @@ Browser
   │
   ├─── HTTP  :80  ──► Nginx ──► 301 Redirect ke HTTPS
   │
-  └─── HTTPS :443 ──► Nginx ──► /api/      ──► Django (REST API)
-                                /admin/    ──► Django (Admin Panel)
-                                /          ──► Django (Web App)
-                                /grafana/  ──► Grafana (Monitoring)
-                                /prometheus/► Prometheus (Metrics)
+  └─── HTTPS :443 ──► Nginx ──► /api/       ──► Django (REST API)
+                                /admin/     ──► Django (Admin Panel)
+                                /           ──► Django (Web App)
+                                /grafana/   ──► Grafana (Monitoring)
+                                /prometheus/──► Prometheus (Metrics)
 ```
 
 ---
@@ -118,12 +120,13 @@ Browser
 | **Backend** | Django | 4.x | REST API + Web Application |
 | **Database** | PostgreSQL | latest | Penyimpanan data relasional |
 | **Object Storage** | MinIO | latest | Penyimpanan file & gambar |
-| **Orchestration** | Docker Swarm | - | Container orchestration |
+| **Orchestration** | Docker Swarm | — | Container orchestration |
 | **Metrics** | Prometheus | latest | Pengumpulan & penyimpanan metrics |
 | **Dashboard** | Grafana | latest | Visualisasi monitoring |
 | **Node Metrics** | Node Exporter | latest | Metrics CPU, RAM, Disk per node |
 | **Container Metrics** | cAdvisor | latest | Metrics per container |
 
+---
 
 ## ✅ Prasyarat
 
@@ -159,78 +162,80 @@ sudo ufw enable
 
 ---
 
-## 📠 Setup Enviroment Virtual Machine
+## 📠 Setup Environment Virtual Machine
 
 ### STEP 1 — Setting Network VirtualBox
 
-Lakukan konfigurasi Network seperti berikut :
+Lakukan konfigurasi Network seperti berikut:
 
-| Interface         | IP Address      | Subnet Mask     |
-|------------------ |---------------  |-----------------|
-| Host Only Network |  10.10.10.0     |  255.255.255.0  |
-| NAT Network       |  192.168.0.0/24 |       /24       |
+| Interface | IP Address | Subnet Mask |
+|-----------|------------|-------------|
+| Host Only Network | 10.10.10.0 | 255.255.255.0 |
+| NAT Network | 192.168.0.0/24 | /24 |
 
-Host Only Network : 
+**Host Only Network:**
 
 <img width="1835" height="916" alt="HkUVE9Zc-x" src="https://github.com/user-attachments/assets/5d622d9b-c0c3-409d-b6ab-3db31fb15f5c" />
-<br><br>
 
-NAT Network : 
+**NAT Network:**
 
 <img width="1919" height="1007" alt="HyzeN5Zc-x" src="https://github.com/user-attachments/assets/c9f15167-f2e3-4b23-a15a-dd20f99193be" />
 
+---
 
 ### STEP 2 — Import VM
 
-- **Download BTA-Server.ova**
-link : https://drive.google.com/file/d/18myvWc4yZIphCNK-KaOz3WLCjtQrkOJw/view?pli=1
-- **klik file > import appliance pada virtualbox**
-<img width="283" height="152" alt="S1nH0GDPZg" src="https://github.com/user-attachments/assets/824df1c2-8c35-4ea8-92c6-e0d24f2b8542" />
-<br><br>
+1. **Download BTA-Server.ova**
+   > Link: https://drive.google.com/file/d/18myvWc4yZIphCNK-KaOz3WLCjtQrkOJw/view?pli=1
 
-- **di import appliance tab, masukkan file .ova yang sudah terdownload.**
-<img width="650" height="578" alt="BkDiCfDwWe" src="https://github.com/user-attachments/assets/c33bbe48-6253-4404-8d69-9da57e9e79c2" />
-<br><br>
+2. **Klik File > Import Appliance pada VirtualBox**
 
-- Di bagian setting, rubah namanya menjadi Manager.
-<img width="617" height="470" alt="BJYh4cWqbe" src="https://github.com/user-attachments/assets/a9919bd8-4c80-41f5-ae6e-897cd8423607" />
-<br><br>
+   <img width="283" height="152" alt="S1nH0GDPZg" src="https://github.com/user-attachments/assets/824df1c2-8c35-4ea8-92c6-e0d24f2b8542" />
 
-- **Jika sudah membuat vm Manager, Selanjutnya clone vm sebanyak 2 kali (Worker1 & Worker2)**
+3. **Di tab Import Appliance, masukkan file `.ova` yang sudah terdownload**
+
+   <img width="650" height="578" alt="BkDiCfDwWe" src="https://github.com/user-attachments/assets/c33bbe48-6253-4404-8d69-9da57e9e79c2" />
+
+4. **Di bagian setting, ubah namanya menjadi `Manager`**
+
+   <img width="617" height="470" alt="BJYh4cWqbe" src="https://github.com/user-attachments/assets/a9919bd8-4c80-41f5-ae6e-897cd8423607" />
+
+---
+
+### STEP 3 — Clone VM
+
+Jika sudah membuat VM Manager, clone VM sebanyak 2 kali untuk Worker1 dan Worker2.
+
 <img width="1919" height="868" alt="B1vSBqZcWl" src="https://github.com/user-attachments/assets/234eb2c8-6847-4e07-baa6-1430c319d8b9" />
-<br><br>
 
-**Clone VM Worker1 :**
+**Clone VM Worker1:**
 
 <img width="959" height="624" alt="HyKIS5bcZe" src="https://github.com/user-attachments/assets/83fe3be3-a398-4a2e-a7cb-7a3c5859ae16" />
-<br><br>
 
-**Clone VM Worker2 :**
+**Clone VM Worker2:**
 
 <img width="933" height="610" alt="rJssH5ZqZx" src="https://github.com/user-attachments/assets/685a25e8-e33d-4348-af01-18e2e5a9624a" />
-<br><br>
 
-- **Jika sudah, jalankan semua vm**
-  
+Jika sudah, jalankan semua VM:
+
 <img width="1919" height="1011" alt="S1K0Sq-cbx" src="https://github.com/user-attachments/assets/867b6c3d-2400-4a89-9840-2583e9039ccb" />
-<br><br>
 
- - Konfigurasi ip host-only setiap node (Manager, Worker1 dan Worker2)
+---
 
-Jalankan Perintah berikut : 
+### STEP 4 — Setting IP Host Only
+
+Konfigurasi IP host-only di setiap node (Manager, Worker1, dan Worker2):
+
 ```bash
 sudo nano /etc/netplan/50-cloud-init.yaml
 ```
 
-Edit pada bagian **50-cloud-init.yaml** di setiap node.
+Edit file `50-cloud-init.yaml` di setiap node sesuai konfigurasi berikut.
 
-**Node Manager** :
-```yml
-# This file is generated from information provided by the datasource. Changes
-# to it will not persist across an instance reboot. To disable cloud-init's
-# network configuration capabilities, write a file
-# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
-# network: {config: disabled}
+<details>
+<summary><b>Node Manager</b></summary>
+
+```yaml
 network:
     ethernets:
         enp0s3:
@@ -241,7 +246,6 @@ network:
             nameservers:
                 addresses:
                 - 8.8.8.8
-
         enp0s8:
             addresses:
             - 10.10.10.10/24
@@ -252,13 +256,12 @@ network:
     version: 2
 ```
 
-**Worker1** :
-```yml
-# This file is generated from information provided by the datasource. Changes
-# to it will not persist across an instance reboot. To disable cloud-init's
-# network configuration capabilities, write a file
-# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
-# network: {config: disabled}
+</details>
+
+<details>
+<summary><b>Worker1</b></summary>
+
+```yaml
 network:
     ethernets:
         enp0s3:
@@ -269,7 +272,6 @@ network:
             nameservers:
                 addresses:
                 - 8.8.8.8
-
         enp0s8:
             addresses:
             - 10.10.10.20/24
@@ -280,13 +282,12 @@ network:
     version: 2
 ```
 
-**Worker2** :
-```yml
-# This file is generated from information provided by the datasource. Changes
-# to it will not persist across an instance reboot. To disable cloud-init's
-# network configuration capabilities, write a file
-# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
-# network: {config: disabled}
+</details>
+
+<details>
+<summary><b>Worker2</b></summary>
+
+```yaml
 network:
     ethernets:
         enp0s3:
@@ -297,7 +298,6 @@ network:
             nameservers:
                 addresses:
                 - 8.8.8.8
-
         enp0s8:
             addresses:
             - 10.10.10.30/24
@@ -308,120 +308,130 @@ network:
     version: 2
 ```
 
-  
+</details>
 
+---
+
+### STEP 5 — Setting Hostname Node
+
+Ubah hostname di setiap node agar mudah diidentifikasi.
+
+**Node Manager:**
+```bash
+sudo hostnamectl set-hostname manager
+sudo nano /etc/hosts
+```
+<img width="1682" height="465" alt="r1-hpq-qZe" src="https://github.com/user-attachments/assets/99ce7e0e-62fd-4ab8-9ddb-5d63b6928925" />
+
+**Worker1:**
+```bash
+sudo hostnamectl set-hostname worker1
+sudo nano /etc/hosts
+```
+<img width="1606" height="331" alt="S1xbR9bqWx" src="https://github.com/user-attachments/assets/46fb9d52-e650-4d70-9e9e-344781d973cd" />
+
+**Worker2:**
+```bash
+sudo hostnamectl set-hostname worker2
+sudo nano /etc/hosts
+```
+<img width="1120" height="363" alt="Hy3SRc-q-x" src="https://github.com/user-attachments/assets/2b48f532-3b49-4035-8439-9669bbd5b207" />
+
+---
+
+## 💻 Docker Installation & Swarm Initialization
 
 ### STEP 1 — Install Docker di Semua Node
 
 ```bash
 # Jalankan di Manager, Worker-1, dan Worker-2
 sudo apt-get update
-sudo apt-get install -y curl gnupg lsb-release
+sudo apt-get install ca-certificates curl gnupg lsb-release -y
 
+sudo mkdir -m 0755 -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
     | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
-echo "deb [arch=$(dpkg --print-architecture) \
-    signed-by=/etc/apt/keyrings/docker.gpg] \
-    https://download.docker.com/linux/ubuntu \
-    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-    | sudo tee /etc/apt/sources.list.d/docker.list
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-sudo usermod -aG docker $USER && newgrp docker
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+sudo usermod -aG docker $USER
 ```
 
 ### STEP 2 — Inisialisasi Docker Swarm
 
-```bash
-# Di Manager Node
-docker swarm init --advertise-addr 192.168.1.10
+**Inisialisasi Swarm di node Manager:**
 
-# Di Worker-1 dan Worker-2 (gunakan token dari output di atas)
-docker swarm join --token <TOKEN> 192.168.1.10:2377
+```bash
+docker swarm init --advertise-addr 10.10.10.10
 ```
 
-### STEP 3 — Label Nodes
+<img width="1711" height="309" alt="By7crib5Zg" src="https://github.com/user-attachments/assets/39100644-72a9-44e7-a749-9434eaf91781" />
+
+**Join Swarm di Worker1 dan Worker2** menggunakan token join yang didapat dari node Manager:
 
 ```bash
-# Di Manager Node
-docker node ls  # lihat ID node
-
-# Beri label sesuai hostname
-docker node update --label-add role=worker1 <ID_WORKER1>
-docker node update --label-add role=worker2 <ID_WORKER2>
+# Worker1 & Worker2
+docker swarm join --token SWMTKN-1-1yyhenpyfq5e8zaa4pb23i7h5ath06ibsdysy2iy5q26pj9hy7-1xnjhn5yelt7q8vsd1gayvq7o 10.10.10.10:2377
 ```
 
-### STEP 4 — Buat Docker Secrets
+<img width="1702" height="137" alt="rydRSjbq-x" src="https://github.com/user-attachments/assets/90eb5e58-2374-4027-a7dd-e089e0469416" />
+
+<img width="1702" height="180" alt="BJAJIjZqZx" src="https://github.com/user-attachments/assets/8d455514-a6af-4aad-ba31-07b5b1714261" />
+
+**Periksa status node dari Manager:**
 
 ```bash
-# SSL Certificate (buat dari file yang sudah ada)
+docker node ls
+```
+
+<img width="1470" height="232" alt="HJbBIiWcZx" src="https://github.com/user-attachments/assets/a809b43c-5582-42cd-a4ce-2f1893d1b843" />
+
+---
+
+## 🔒 Create Docker Secret
+
+### STEP 1 — Membuat Docker Secret
+
+Kredensial perlu disimpan dalam Docker Secret untuk menjaga keamanan data sensitif. Kredensial yang digunakan meliputi SSL untuk Nginx, kredensial Grafana, PostgreSQL, MinIO, dan Django.
+
+```bash
+# SSL untuk Nginx
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout server.key -out server.crt \
+  -subj "/C=ID/ST=Jawa Barat/L=Bandung/O=Telkom University/OU=NetDev/CN=layananbuku.netdev"
+
+docker secret create nginx_ssl_key ./server.key
 docker secret create nginx_ssl_cert ./server.crt
-docker secret create nginx_ssl_key  ./server.key
 
-# Database
-echo "bookstore_user"     | docker secret create postgres_user -
-echo "SecurePassword123!" | docker secret create postgres_password -
-echo "bookstore_db"       | docker secret create postgres_db -
+# PostgreSQL
+echo "admin"   | docker secret create postgres_user -
+echo "admin"   | docker secret create postgres_password -
+echo "buku_db" | docker secret create postgres_db -
 
 # MinIO
-echo "minioadmin"         | docker secret create minio_root_user -
-echo "MinioSecure2024!"   | docker secret create minio_root_password -
+echo "admin" | docker secret create minio_root_user -
+echo "admin" | docker secret create minio_root_password -
 
 # Django
 python3 -c "import secrets; print(secrets.token_urlsafe(50))" \
-    | docker secret create django_secret_key -
+  | docker secret create django_secret_key -
 
 # Grafana
-echo "admin"              | docker secret create grafana_admin_user -
-echo "GrafanaSecure2024!" | docker secret create grafana_admin_password -
+echo "admin" | docker secret create grafana_admin_user -
+echo "admin" | docker secret create grafana_admin_password -
+```
 
-# Verifikasi
+### STEP 2 — Memeriksa Docker Secret
+
+```bash
 docker secret ls
 ```
 
-### STEP 5 — Clone Repository & Deploy
-
-```bash
-# Clone repository
-git clone https://github.com/NAMA_ORG/FinalProjectKelompok3.git
-cd FinalProjectKelompok3
-
-# Deploy stack
-docker stack deploy -c docker-compose.yml kelompok3
-
-# Pantau status
-watch docker stack services kelompok3
-```
-
-### STEP 6 — Verifikasi Semua Service Running
-
-```bash
-docker stack services kelompok3
-
-# Output yang diharapkan:
-# NAME                          REPLICAS   STATUS
-# kelompok3_proxy-nginx         1/1        Running
-# kelompok3_backend-django      3/3        Running
-# kelompok3_database-postgres   1/1        Running
-# kelompok3_storage-minio       1/1        Running
-# kelompok3_prometheus          1/1        Running
-# kelompok3_grafana             1/1        Running
-# kelompok3_node-exporter       3/3        Running
-# kelompok3_cadvisor            3/3        Running
-```
-
-### STEP 7 — Setup Domain Lokal
-
-```bash
-# Di laptop/PC yang mengakses aplikasi
-echo "192.168.1.10 layananbuku.netdev" | sudo tee -a /etc/hosts
-
-# Verifikasi
-curl -k https://layananbuku.netdev/health
-# Output: {"status":"ok","service":"nginx"}
-```
+<img width="1496" height="385" alt="S1fyAjZ5bl" src="https://github.com/user-attachments/assets/a2b91da6-e00f-4087-a1a8-26b2263ccecc" />
 
 ---
 
@@ -433,8 +443,8 @@ curl -k https://layananbuku.netdev/health
 FinalProjectKelompok3/
 ├── .github/
 │   └── workflows/
-│       └── cicd.yml              # CI/CD Pipeline (Abdur)
-├── backend-django/               # Django Application (Alya)
+│       └── cicd.yml                  # CI/CD Pipeline (Abdur)
+├── backend-django/                   # Django Application (Alya)
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── entrypoint.sh
@@ -442,15 +452,15 @@ FinalProjectKelompok3/
 │       ├── settings.py
 │       ├── urls.py
 │       └── buku/
-├── database-postgres/            # PostgreSQL (Danur)
+├── database-postgres/                # PostgreSQL (Danur)
 │   ├── Dockerfile
 │   └── init.sql
-├── storage-minio/                # MinIO (Danur)
+├── storage-minio/                    # MinIO (Danur)
 │   └── Dockerfile
-├── proxy-nginx/                  # Nginx Reverse Proxy (Dzakky)
+├── proxy-nginx/                      # Nginx Reverse Proxy (Dzakky)
 │   ├── Dockerfile
 │   └── nginx.conf
-├── monitoring/                   # Monitoring Stack (Dzakky)
+├── monitoring/                       # Monitoring Stack (Dzakky)
 │   ├── prometheus/
 │   │   ├── Dockerfile
 │   │   └── prometheus.yml
@@ -462,7 +472,7 @@ FinalProjectKelompok3/
 │           │   └── prometheus.yml
 │           └── dashboards/
 │               └── dashboard.yml
-└── docker-compose.yml            # Main Stack (Abdur)
+└── docker-compose.yml                # Main Stack (Abdur)
 ```
 
 ### Environment Variables
@@ -477,49 +487,42 @@ FinalProjectKelompok3/
 | `GRAFANA_IMAGE` | `dzakky1/bookstorage-grafana:testing` | Image Grafana |
 
 ---
+
 ## ⚙️ Konfigurasi App Django
 
-Isi Disini
+> Isi Disini
 
 ---
 
----
 ## 🐘 Konfigurasi Database PostgreSQL
 
-Isi Disini
+> Isi Disini
 
 ---
 
----
 ## 📦 Konfigurasi Storage MinIO
 
-Isi Disini
+> Isi Disini
 
 ---
 
----
 ## 🌐 Konfigurasi Proxy Nginx
 
-Isi Disini
+> Isi Disini
 
 ---
 
----
 ## 📊 Konfigurasi Monitoring
 
-Isi Disini
+> Isi Disini
 
 ---
 
----
 ## 🐳 Docker Stack Deployment
 
-Isi Disini
+> Isi Disini
 
 ---
-
-
-
 
 ## 👨‍💻 Tim Pengembang
 
@@ -532,9 +535,9 @@ Isi Disini
 | 🗄️ | **Danur** | Database & Storage | [@danur](https://github.com) |
 | 🌐 | **Dzakky** | Proxy & Monitoring | [@dzakky](https://github.com) |
 
+</div>
 
 ---
-</div>
 
 <div align="center">
 
