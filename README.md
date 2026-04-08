@@ -476,6 +476,43 @@ FinalProjectKelompok3/
 | `PROMETHEUS_IMAGE` | `dzakky1/bookstorage-prometheus:testing` | Image Prometheus |
 | `GRAFANA_IMAGE` | `dzakky1/bookstorage-grafana:testing` | Image Grafana |
 
+---
+## ⚙️ Konfigurasi App Django
+
+Isi Disini
+
+---
+
+---
+## 📦 Konfigurasi Storage MinIO
+
+Isi Disini
+
+---
+
+---
+## 🌐 Konfigurasi Proxy Nginx
+
+Isi Disini
+
+---
+
+---
+## 📊 Konfigurasi Monitoring
+
+Isi Disini
+
+---
+
+---
+## 🐳 Docker Stack Deployment
+
+Isi Disini
+
+---
+
+
+
 
 ## 👨‍💻 Tim Pengembang
 
@@ -488,15 +525,9 @@ FinalProjectKelompok3/
 | 🗄️ | **Danur** | Database & Storage | [@danur](https://github.com) |
 | 🌐 | **Dzakky** | Proxy & Monitoring | [@dzakky](https://github.com) |
 
+
+---
 </div>
-
----
-
-## 📄 Lisensi
-
-Proyek ini dibuat untuk keperluan akademis — Final Project Kelompok 3.
-
----
 
 <div align="center">
 
