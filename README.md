@@ -234,24 +234,79 @@ Edit pada bagian **50-cloud-init.yaml** di setiap node.
 network:
     ethernets:
         enp0s3:
-          addresses:
-- 192.168.0.11/24
-dhcp4: false
-gateway4: 192.168.0.1
-nameservers:
-addresses:
-- 8.8.8.8
+            addresses:
+            - 192.168.0.11/24
+            dhcp4: false
+            gateway4: 192.168.0.1
+            nameservers:
+                addresses:
+                - 8.8.8.8
 
-addresses:
-- 10.10.10.10/24
-dhcp4: false
-nameservers:
-addresses:
-- 8.8.8.8
-
-version: 2
+        enp0s8:
+            addresses:
+            - 10.10.10.10/24
+            dhcp4: false
+            nameservers:
+                addresses:
+                - 8.8.8.8
+    version: 2
 ```
 
+**Worker1** :
+```yml
+# This file is generated from information provided by the datasource. Changes
+# to it will not persist across an instance reboot. To disable cloud-init's
+# network configuration capabilities, write a file
+# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
+# network: {config: disabled}
+network:
+    ethernets:
+        enp0s3:
+            addresses:
+            - 192.168.0.11/24
+            dhcp4: false
+            gateway4: 192.168.0.1
+            nameservers:
+                addresses:
+                - 8.8.8.8
+
+        enp0s8:
+            addresses:
+            - 10.10.10.20/24
+            dhcp4: false
+            nameservers:
+                addresses:
+                - 8.8.8.8
+    version: 2
+```
+
+**Worker2** :
+```yml
+# This file is generated from information provided by the datasource. Changes
+# to it will not persist across an instance reboot. To disable cloud-init's
+# network configuration capabilities, write a file
+# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
+# network: {config: disabled}
+network:
+    ethernets:
+        enp0s3:
+            addresses:
+            - 192.168.0.11/24
+            dhcp4: false
+            gateway4: 192.168.0.1
+            nameservers:
+                addresses:
+                - 8.8.8.8
+
+        enp0s8:
+            addresses:
+            - 10.10.10.30/24
+            dhcp4: false
+            nameservers:
+                addresses:
+                - 8.8.8.8
+    version: 2
+```
 
   
 
