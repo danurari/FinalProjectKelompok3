@@ -484,6 +484,13 @@ Isi Disini
 ---
 
 ---
+## 🐘 Konfigurasi Database PostgreSQL
+
+Isi Disini
+
+---
+
+---
 ## 📦 Konfigurasi Storage MinIO
 
 Isi Disini
