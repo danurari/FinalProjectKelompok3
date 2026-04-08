@@ -476,11 +476,6 @@ FinalProjectKelompok3/
 | `PROMETHEUS_IMAGE` | `dzakky1/bookstorage-prometheus:testing` | Image Prometheus |
 | `GRAFANA_IMAGE` | `dzakky1/bookstorage-grafana:testing` | Image Grafana |
 
-Deploy dengan image custom:
-```bash
-NGINX_IMAGE=dzakky1/bookstorage-nginx:v1.0 \
-docker stack deploy -c docker-compose.yml kelompok3
-```
 
 ## 👨‍💻 Tim Pengembang
 
