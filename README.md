@@ -713,7 +713,62 @@ Menyiapkan script otomatisasi deployment agar aplikasi terbungkus menjadi image 
 
 ## 🌐 Konfigurasi Proxy Nginx
 
-> Isi Disini
+Pada project ini, Nginx digunakan sebagai reverse proxy yang bertugas untuk:
+
+- Mengarahkan request ke backend Django
+- Menyediakan HTTPS (SSL termination)
+- Mengatur routing ke beberapa service (Grafana, Prometheus, MinIO)
+- Menyediakan endpoint health check
+
+### Dockerfile Nginx 
+Dockerfile Nginx digunakan untuk membangun image Nginx yang sudah dikustomisasi.
+```Dockerfile
+FROM nginx:1.25-alpine
+
+RUN apk add --no-cache curl openssl
+
+COPY nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 80 443
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -kfsS https://localhost/health || exit 1
+```
+
+**Penjelasan Konfigurasi : **
+```Dockerfile
+FROM nginx:1.25-alpine
+```
+Menggunakan image resmi Nginx berbasis Alpine Linux yang ringan dan cepat, sehingga cocok untuk deployment container.
+
+```Dockerfile
+RUN apk add --no-cache curl openssl
+```
+Menambahkan dependency:
+- `curl` → digunakan untuk melakukan health check  
+- `openssl` → mendukung konfigurasi HTTPS/SSL
+
+```Dockerfile
+COPY nginx.conf /etc/nginx/nginx.conf
+```
+Menyalin file konfigurasi Nginx custom ke dalam container agar Nginx berjalan sesuai kebutuhan sistem.
+
+```Dockerfile
+EXPOSE 80 443
+```
+Membuka port:
+- `80` untuk HTTP
+- `443` untuk HTTPS
+
+```Dockerfile
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -kfsS https://localhost/health || exit 1
+```
+Healtcheck digunakan untuk mengecek apakah container masih berjalan dengan baik (healthy).
+Docker akan menjalankan perintah ini secara berkala untuk memastikan service di dalam container (Nginx) tetap aktif dan responsif.
+
+
+
+
 
 ---
 
