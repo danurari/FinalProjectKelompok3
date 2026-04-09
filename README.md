@@ -701,8 +701,56 @@ Menyiapkan script otomatisasi deployment agar aplikasi terbungkus menjadi image 
 
 ## 🐘 Konfigurasi Database PostgreSQL
 
-> Isi Disini
+Pada project ini, PostgreSQL digunakan sebagai database relasional utama yang bertugas untuk :
 
+- data aplikasi backend Django secara terpusat.
+- Menahan beban trafik konkurensi tinggi saat dilakukan Load Testing menggunakan k6.
+- Menyediakan dukungan Fuzzy Search dan keamanan UUID untuk data buku.
+- Menyediakan endpoint health check yang terintegrasi dengan Docker Secrets.
+
+### Dockerfile PostgreSQL
+Dockerfile PostgreSQL digunakan untuk membangun image database yang ringan namun sudah dioptimasi kecepatannya untuk menahan load test.
+
+```Dockerfile
+FROM postgres:15-alpine
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD pg_isready -U $(cat /run/secrets/postgres_user) -d $(cat /run/secrets/postgres_db) || exit 1
+
+ENV TZ=Asia/Jakarta
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+CMD ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=128MB"]
+
+COPY init.sql /docker-entrypoint-initdb.d/
+```
+**Penjelasan Konfigurasi :**
+```Dockerfile
+FROM postgres:15-alpine
+```
+Menggunakan image resmi PostgreSQL versi 15 berbasis Alpine Linux agar ukuran image sangat kecil dan proses deployment lebih cepat.
+
+```Dockerfile
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD pg_isready -U $(cat /run/secrets/postgres_user) -d $(cat /run/secrets/postgres_db) || exit 1
+```
+Healthcheck digunakan untuk memastikan database benar-benar siap menerima koneksi (mencegah error pada Django). Konfigurasi ini secara dinamis membaca username dan nama database langsung dari Docker Secrets (/run/secrets/...) sehingga sangat aman dan tidak ada hardcode kredensial. Waktu start-period=30s diberikan agar container tidak mengalami flapping saat VM Worker sedang spike di awal deployment.
+
+```Dockerfile
+ENV TZ=Asia/Jakarta
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+```
+Menyesuaikan zona waktu container ke Waktu Indonesia Barat (WIB) agar pencatatan log saat load test atau error lebih mudah dibaca.
+
+```Dockerfile
+CMD ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=128MB"]
+```
+Melakukan Performance Tuning. Secara bawaan, PostgreSQL hanya menerima 100 koneksi maksimal. Limit dinaikkan ke 200 dan RAM dialokasikan sebesar 128MB agar database tidak mengalami bottleneck atau error 500 (Too many clients) saat diserang ratusan request bersamaan oleh k6.
+
+```Dockerfile
+COPY init.sql /docker-entrypoint-initdb.d/
+```
+Menyalin script inisialisasi yang akan otomatis dijalankan saat container pertama kali menyala. Script ini berfungsi mengaktifkan ekstensi uuid-ossp (keamanan ID) dan pg_trgm (Fuzzy Search agar pencarian buku memiliki toleransi typo).
 ---
 
 ## 📦 Konfigurasi Storage MinIO
@@ -734,7 +782,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -kfsS https://localhost/health || exit 1
 ```
 
-**Penjelasan Konfigurasi : **
+**Penjelasan Konfigurasi :**
 ```Dockerfile
 FROM nginx:1.25-alpine
 ```
