@@ -859,14 +859,121 @@ Healtcheck digunakan untuk mengecek apakah container masih berjalan dengan baik 
 Docker akan menjalankan perintah ini secara berkala untuk memastikan service di dalam container (Nginx) tetap aktif dan responsif.
 
 
-
-
-
 ---
 
 ## 📊 Konfigurasi Monitoring
 
-> Isi Disini
+### Dockerfile Prometheus 
+
+```Dockerfile
+FROM prom/prometheus:latest
+
+COPY prometheus.yml /etc/prometheus/prometheus.yml
+
+EXPOSE 9090
+
+CMD [ \
+    "--config.file=/etc/prometheus/prometheus.yml", \
+    "--storage.tsdb.path=/prometheus", \
+    "--storage.tsdb.retention.time=15d", \
+    "--web.enable-lifecycle", \
+    "--web.external-url=/prometheus/", \
+    "--web.route-prefix=/" \
+]
+```
+Dockerfile ini digunakan untuk membuat container Prometheus dengan konfigurasi custom.
+
+**Penjelasan Konfigurasi Dockerfile Prometheus** :
+```Dockerfile
+FROM prom/prometheus:latest
+```
+Menggunakan image resmi Prometheus versi terbaru.
+
+```Dockerfile
+COPY prometheus.yml /etc/prometheus/prometheus.yml
+```
+Menyalin file konfigurasi utama (prometheus.yml) ke dalam container.
+
+```Dockerfile
+EXPOSE 9090
+```
+Membuka port 9090 yang digunakan untuk:
+- Web UI Prometheus
+- API Prometheus
+
+```Dockerfile
+CMD [
+  "--config.file=/etc/prometheus/prometheus.yml",
+  "--storage.tsdb.path=/prometheus",
+  "--storage.tsdb.retention.time=15d",
+  "--web.enable-lifecycle",
+  "--web.external-url=/prometheus/",
+  "--web.route-prefix=/"
+]
+```
+Menjalankan Prometheus dengan beberapa konfigurasi penting:
+
+- --config.file
+Menentukan lokasi file konfigurasi
+- --storage.tsdb.path
+Lokasi penyimpanan data metrics
+- --storage.tsdb.retention.time=15d
+Data metrics disimpan selama 15 hari
+- --web.enable-lifecycle
+Mengaktifkan fitur reload config tanpa restart container
+- --web.external-url=/prometheus/
+Digunakan karena Prometheus diakses melalui reverse proxy (Nginx)
+- --web.route-prefix=/
+Mengatur base path routing agar kompatibel dengan proxy
+
+### Konfigurasi Prometheus.yml 
+File ini menentukan bagaimana Prometheus mengambil data metrics dari berbagai service.
+
+```yml 
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+  external_labels:
+    project: "layananbuku"
+    env: "production"
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "node-exporter"
+    dns_sd_configs:
+      - names:
+          - "tasks.node-exporter"
+        type: "A"
+        port: 9100
+
+  - job_name: "cadvisor"
+    dns_sd_configs:
+      - names:
+          - "tasks.cadvisor"
+        type: "A"
+        port: 8080
+
+  - job_name: "django"
+    metrics_path: "/metrics"
+    dns_sd_configs:
+      - names:
+          - "tasks.backend-django"
+        type: "A"
+        port: 8000
+
+  - job_name: "minio"
+    metrics_path: "/minio/v2/metrics/cluster"
+    dns_sd_configs:
+      - names:
+          - "tasks.storage-minio"
+        type: "A"
+        port: 9000
+```
+
 
 ---
 
