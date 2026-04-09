@@ -751,11 +751,55 @@ Melakukan Performance Tuning. Secara bawaan, PostgreSQL hanya menerima 100 konek
 COPY init.sql /docker-entrypoint-initdb.d/
 ```
 Menyalin script inisialisasi yang akan otomatis dijalankan saat container pertama kali menyala. Script ini berfungsi mengaktifkan ekstensi uuid-ossp (keamanan ID) dan pg_trgm (Fuzzy Search agar pencarian buku memiliki toleransi typo).
+
 ---
 
 ## 📦 Konfigurasi Storage MinIO
 
-> Isi Disini
+Pada project ini, MinIO digunakan sebagai object storage (kompatibel dengan AWS S3) yang bertugas untuk :
+
+- Menyimpan file media statis (gambar sampul buku) dari pengguna.
+- Membuat infrastruktur bucket secara otomatis agar siap digunakan oleh backend.
+- Mengatur perizinan agar file media dapat diakses publik.
+- Menyediakan endpoint health check untuk Docker Swarm.
+
+### Dockerfile MinIO
+Dockerfile MinIO digunakan untuk membangun image storage yang sudah dibekali script otomatisasi bucket.
+
+```Dockerfile
+FROM minio/minio:latest
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
+  CMD curl -f http://localhost:9000/minio/health/live || exit 1
+
+COPY init-minio.sh /usr/bin/init-minio.sh
+RUN chmod +x /usr/bin/init-minio.sh
+
+ENTRYPOINT ["/usr/bin/init-minio.sh"]
+```
+
+**Penjelasan Konfigurasi :**
+```Dockerfile
+FROM minio/minio:latest
+```
+Menggunakan image resmi terbaru dari MinIO untuk mendapatkan fitur stabilitas dan keamanan terkini.
+
+```Dockerfile
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
+  CMD curl -f http://localhost:9000/minio/health/live || exit 1
+```
+Memastikan server MinIO dapat dijangkau dan siap memproses unggahan file. start-period di-set menjadi 30 detik untuk memberikan ruang komputasi saat container melakukan proses booting di dalam VM Worker.
+
+```Dockerfile
+COPY init-minio.sh /usr/bin/init-minio.sh
+RUN chmod +x /usr/bin/init-minio.sh
+```
+Menyalin script bash custom ke dalam sistem container dan memberikan akses executable (+x). Script ini berfungsi untuk membaca kredensial MinIO dari environment maupun secret, kemudian menggunakan MinIO Client (mc) untuk membuat bucket buku-images-bucket secara otomatis dan mengatur kebijakan akses (policy) ke download.
+
+```Dockerfile
+ENTRYPOINT ["/usr/bin/init-minio.sh"]
+```
+Menjadikan script bash custom tersebut sebagai proses utama (nyawa utama) dari container yang tidak bisa ditimpa sembarangan dari luar. Hal ini menjamin bahwa setiap kali MinIO dinyalakan, proses pengecekan dan pembuatan bucket akan selalu dieksekus.
 
 ---
 
