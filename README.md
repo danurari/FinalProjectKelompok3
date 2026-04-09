@@ -1077,21 +1077,57 @@ Berikut adalah langkah-langkah taktis untuk pembuktian infrastruktur swarm
 
 **Langkah Eksekusi:**
 1. Buka terminal di laptop Anda, siapkan *script* k6 untuk menembak domain secara konstan selama 2 menit. Jalankan perintah:
+   script k6:
+   ```javascript
+    import http from "k6/http";
+    import { check, sleep } from "k6";
+    
+    export const options = {
+      insecureSkipTLSVerify: true,
+    
+      stages: [
+        { duration: "30s", target: 50 },
+        { duration: "2m", target: 200 },
+        { duration: "30s", target: 0 },
+      ],
+    
+      thresholds: {
+        http_req_failed: ["rate==0"],
+        http_req_duration: ["p(95)<2000"],
+      },
+    };
+    
+    export default function () {
+      const url = "https://layananbuku.netdev/";
+    
+      const res = http.get(url);
+    
+      check(res, {
+        "status is 200 OK": (r) => r.status === 200,
+      });
+    
+      sleep(1);
+    }
+
+   ```
+   perintah pada laptop:
    ```bash
+   
    k6 run loadtest.js
    ```
-2. Saat pengujian sedang berjalan deras (ditandai dengan indikator *Virtual Users* yang terus naik), pindah ke terminal **Manager VM**.
-3. Lipat gandakan jumlah replika *backend* dari 3 menjadi 6 *container* secara *real-time*:
+3. Saat pengujian sedang berjalan deras (ditandai dengan indikator *Virtual Users* yang terus naik), pindah ke terminal **Manager VM**.
+
+4. Lipat gandakan jumlah replika *backend* dari 3 menjadi 6 *container* secara *real-time*:
    ```bash
    docker service scale bookstorage_backend-django=6
    ```
-4. Buka **Grafana** di *browser*, tunjukkan grafik CPU *container* Django yang perlahan menurun karena beban kerja mulai didistribusikan secara merata ke 6 *container* oleh Nginx *Load Balancer*.
-5. Biarkan k6 berjalan sampai waktu habis.
-6. Saat k6 selesai, lihat rekapitulasi akhir (*Summary*) di terminal laptop Anda. Cari baris metrik:
+5. Buka **Grafana** di *browser*, tunjukkan grafik CPU *container* Django yang perlahan menurun karena beban kerja mulai didistribusikan secara merata ke 6 *container* oleh Nginx *Load Balancer*.
+6. Biarkan k6 berjalan sampai waktu habis.
+7. Saat k6 selesai, lihat rekapitulasi akhir (*Summary*) di terminal laptop Anda. Cari baris metrik:
    ```text
    http_req_failed..................: 0.00%
    ```
-7. Tunjukkan angka `0.00%` ini ke dosen penguji. *(Penjelasan untuk dosen: Ini adalah bukti absolut bahwa penambahan kapasitas server (scaling up) di tengah badai traffic terjadi dengan sangat mulus, tanpa ada satupun request dari pengunjung yang gagal/dibatalkan).*
+8. Tunjukkan angka `0.00%` ini ke dosen penguji. *(Penjelasan untuk dosen: Ini adalah bukti absolut bahwa penambahan kapasitas server (scaling up) di tengah badai traffic terjadi dengan sangat mulus, tanpa ada satupun request dari pengunjung yang gagal/dibatalkan).*
 ---
 ## 👨‍💻 Tim Pengembang
 
