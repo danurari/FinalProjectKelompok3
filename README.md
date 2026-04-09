@@ -490,7 +490,212 @@ FinalProjectKelompok3/
 
 ## ⚙️ Konfigurasi App Django
 
-> Isi Disini
+### Backend Django
+
+Bagian ini mendokumentasikan langkah-langkah teknis secara rinci dalam membangun, mengonfigurasi, dan melakukan dockerisasi pada layanan *backend* berbasis Django untuk sistem Layanan Penyimpanan Buku.
+
+#### 1. Persiapan Lingkungan Virtual (Virtual Environment)
+*Virtual environment* (venv) digunakan untuk mengisolasi dependensi *project* ini agar tidak bentrok dengan *library* Python di sistem operasi utama. Isolasi ini sangat penting untuk memastikan versi pustaka yang dipakai saat *development* sama persis dengan yang akan di-*build* ke dalam Docker.
+
+* **Membuat venv:**
+  ```bash
+  python -m venv venv
+  ```
+* **Aktivasi venv:**
+  * Windows: `venv\Scripts\activate`
+  * Linux/Mac: `source venv/bin/activate`
+
+#### 2. Menginstall Dependensi dan Membuat `requirements.txt`
+Setelah venv aktif, lakukan instalasi pustaka yang dibutuhkan oleh arsitektur *microservices* ini.
+
+* **Instalasi Paket:**
+  ```bash
+  pip install django psycopg2-binary django-storages boto3 django-prometheus gunicorn
+  ```
+  **Penjelasan Rinci Dependensi:**
+  * `django`: Framework utama untuk membangun backend web dan manajemen database berbasis ORM.
+  * `psycopg2-binary`: Driver (adaptor) C-extension yang memungkinkan Django berkomunikasi secara efisien dengan database PostgreSQL. Versi `-binary` dipilih agar tidak perlu mengompilasi dari *source code* saat proses *build* Docker.
+  * `django-storages` & `boto3`: Kombinasi pustaka untuk membajak sistem penyimpanan bawaan Django dan mengarahkannya ke layanan Object Storage jarak jauh (dalam hal ini MinIO) menggunakan protokol standar S3.
+  * `django-prometheus`: Library monitoring yang menyisipkan middleware ke aplikasi untuk mengekspor metrik performa (seperti total request, latensi, dll) ke endpoint `/metrics`.
+  * `gunicorn`: Web server antarmuka WSGI (Web Server Gateway Interface) tingkat produksi. Mampu menangani banyak antrean request secara paralel (multi-worker) di dalam container.
+
+* **Menyimpan Dependensi:**
+  ```bash
+  pip freeze > requirements.txt
+  ```
+  Perintah ini membekukan semua versi pustaka yang terinstall ke dalam file teks. Docker akan membaca file ini saat proses build untuk mereplikasi lingkungan kerja yang sama persis.
+
+#### 3. Inisialisasi Project dan Aplikasi (App)
+Tahap ini membuat fondasi struktur folder aplikasi Django yang memisahkan konfigurasi global dengan logika bisnis.
+
+* **Start Project Utama:**
+  ```bash
+  django-admin startproject bookstorage .
+  ```
+  *(Tanda titik `.` memastikan project terbuat di direktori saat ini, menghindari pembuatan folder berlapis).*
+
+* **Start App Buku:**
+  ```bash
+  python manage.py startapp books
+  ```
+  *(Membuat modul aplikasi modular bernama `books` yang khusus menangani entitas dan logika manajemen buku).*
+
+#### 4. Konfigurasi `models.py` (Skema Basis Data)
+Buka file `books/models.py` dan definisikan struktur tabel basis data. Model ini akan diterjemahkan oleh Django menjadi tabel PostgreSQL.
+
+```python
+from django.db import models
+ 
+class Book(models.Model):
+    judul = models.CharField(max_length=255)
+    penulis = models.CharField(max_length=255)
+    halaman = models.IntegerField()
+    tahun_terbit = models.IntegerField()
+    sampul_buku = models.ImageField(upload_to='sampul/')
+    
+    def __str__(self):
+        return self.judul
+```
+
+**Penjelasan Rinci Variabel Model:**
+* **`judul`**: Menggunakan `CharField` untuk menyimpan teks pendek (maksimal 255 karakter).
+* **`penulis`**: Menggunakan `CharField` untuk menyimpan string nama pengarang.
+* **`halaman`**: Menggunakan `IntegerField` untuk menyimpan data numerik berupa jumlah total halaman buku.
+* **`tahun_terbit`**: Menggunakan `IntegerField` untuk menyimpan angka tahun publikasi.
+* **`sampul_buku`**: Menggunakan `ImageField` khusus untuk mengelola file gambar. Parameter `upload_to='sampul/'` menginstruksikan Django untuk secara otomatis mengelompokkan file upload ke dalam folder `sampul/` di dalam bucket MinIO.
+* **`def __str__(self)`**: Fungsi bawaan Python untuk merepresentasikan objek ke dalam bentuk string (misalnya saat ditampilkan di panel Django Admin).
+
+#### 5. Konfigurasi `settings.py`
+Buka `bookstorage/settings.py` dan sesuaikan pengaturan global agar terintegrasi dengan arsitektur sistem (PostgreSQL, MinIO, dan Prometheus), serta mendukung fitur keamanan Docker Secrets.
+
+```python
+import os
+ 
+# Kode untuk membaca docker secret
+def get_secret(secret_name, default=None):
+    try:
+        with open(f"/run/secrets/{secret_name}", 'r') as secret_file:
+            return secret_file.read().strip()
+    except:
+        return os.environ.get(secret_name, default)
+ 
+# Pendaftaran Aplikasi
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    # ... (app bawaan lainnya)
+    'books', 
+    'storages', 
+]
+ 
+# Tambahkan Middleware Prometheus
+MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
+    # ... (middleware bawaan)
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
+]
+ 
+# 2. Konfigurasi Database (PostgreSQL)
+# Membaca variabel dari environment Docker Swarm / secrets
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': get_secret('postgres_db', 'namadb_default'),
+        'USER': get_secret('postgres_user', 'user_default'),
+        'PASSWORD': get_secret('postgres_password', 'pass_default'),
+        'HOST': os.environ.get('DB_HOST', 'database-postgres'), 
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+    }
+}
+ 
+# 3. Konfigurasi MinIO (S3 Object Storage)
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+ 
+AWS_ACCESS_KEY_ID = get_secret('minio_root_user', 'admin')
+AWS_SECRET_ACCESS_KEY = get_secret('minio_root_password', 'admin')
+AWS_STORAGE_BUCKET_NAME = 'buku-images-bucket'
+AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_URL', 'http://localhost:9000')
+AWS_S3_FILE_OVERWRITE = False
+AWS_S3_USE_SSL = False
+AWS_S3_ADDRESSING_STYLE = 'path'
+AWS_S3_CUSTOM_DOMAIN = "layananbuku.netdev/buku-images-bucket"
+```
+
+**Penjelasan Rinci Variabel Settings:**
+* **Fungsi `get_secret`**: Blok kode krusial untuk mengambil kredensial sensitif. Fungsi ini akan mencoba membaca dari path `/run/secrets/` (fitur keamanan standar Docker Swarm). Jika gagal, ia akan menggunakan fungsi fallback ke Environment Variable biasa atau nilai default.
+* **`STORAGES`**: Format baru Django (v4.2+) untuk mendefinisikan sistem penyimpanan. Media file diarahkan ke `S3Boto3Storage` (MinIO), sedangkan static file (CSS/JS) tetap di lokal `StaticFilesStorage`.
+* **MinIO Settings**:
+  * `AWS_S3_FILE_OVERWRITE = False`: Menghindari penimpaan (overwrite) jika ada gambar sampul dengan nama file yang identik.
+  * `AWS_S3_USE_SSL = False`: Dinonaktifkan karena komunikasi internal Swarm menggunakan HTTP biasa.
+  * `AWS_S3_ADDRESSING_STYLE = 'path'`: MinIO memerlukan path-style addressing (misal: `domain.com/bucket/file.jpg`) daripada virtual-host style.
+  * `AWS_S3_CUSTOM_DOMAIN`: Mengatur URL prefix yang disajikan kepada client agar melewati domain lokal Nginx `layananbuku.netdev`.
+
+#### 6. Pembuatan `entrypoint.sh` dan `Dockerfile`
+Menyiapkan script otomatisasi deployment agar aplikasi terbungkus menjadi image yang dapat berjalan stateless di lingkungan orchestration.
+
+* **Buat file `entrypoint.sh`:** File ini bertugas mengeksekusi urutan inisialisasi yang diperlukan Django tepat sebelum menjalankan server aplikasi.
+  ```bash
+  #!/bin/sh
+  echo "Running migrations..."
+  python manage.py migrate --noinput
+  
+  echo "Creating SuperUser...."
+  python manage.py createsuperuser --noinput || true
+  
+  echo "Collecting static files..."
+  python manage.py collectstatic --noinput
+  
+  echo "Starting gunicorn..."
+  exec gunicorn bookstorage.wsgi:application --bind 0.0.0.0:8000 --workers 3  
+  ```
+  **Penjelasan Script:**
+  * `migrate --noinput`: Mengeksekusi perubahan skema tabel secara otomatis tanpa meminta konfirmasi teks dari pengguna.
+  * `createsuperuser || true`: Berusaha membuat akun Admin utama. Jika user sudah ada, argumen `|| true` akan mencegah container crash/exit.
+  * `collectstatic`: Mengumpulkan semua file CSS/JS milik admin Django ke dalam satu folder publik untuk disajikan oleh Nginx.
+  * `gunicorn ... --workers 3`: Membuka server aplikasi di Port 8000 dan menjalankan 3 proses worker untuk memaksimalkan utilitas CPU.
+
+* **Buat file `Dockerfile`:** Bahan untuk menciptakan sistem operasi mini dan memasang aplikasi ke dalamnya.
+  ```dockerfile
+  FROM python:3.12-slim
+   
+  ENV PYTHONDONTWRITEBYTECODE=1
+  ENV PYTHONUNBUFFERED=1
+   
+  RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev curl && rm -rf /var/lib/apt/lists/*
+   
+  WORKDIR /app
+   
+  COPY requirements.txt /app/
+  RUN pip install --upgrade pip \
+      && pip install --no-cache-dir -r requirements.txt
+   
+  COPY . /app/
+   
+  COPY entrypoint.sh /app/
+  RUN chmod +x /app/entrypoint.sh
+   
+  EXPOSE 8000
+   
+  HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+      CMD curl -f http://localhost:8000/ || exit 1
+   
+  CMD ["/app/entrypoint.sh"]
+  ```
+  **Penjelasan Instruksi Docker:**
+  * `FROM python:3.12-slim`: Menggunakan base image Python versi kecil (slim) untuk menghemat ukuran file akhir.
+  * `ENV`: Menonaktifkan pembuatan file cache byte-code Python (`.pyc`) dan memastikan log output langsung dicetak ke console tanpa ditahan di buffer.
+  * `RUN apt-get...`: Menginstal utilitas OS seperti kompiler C (`gcc`) dan dependensi PostgreSQL (`libpq-dev`), lalu langsung menghapus cache memori mesin (APT) untuk menekan ukuran image.
+  * `HEALTHCHECK`: Perintah krusial dalam Docker Swarm untuk terus menembak (ping) URL web setiap 30 detik. Jika aplikasi gagal merespons (exit 1), Swarm akan menganggapnya rusak dan me-restart container secara otomatis.
+
+* **Build Image:** Proses kompilasi Dockerfile menjadi Image yang utuh tidak dilakukan secara manual, melainkan dikonfigurasi melalui pipeline GitHub Actions yang akan men-deploy dan mendistribusikan image tersebut ke dalam Registry milik penulis kode secara terotomatisasi (CI/CD).
+### Frontend Django
+> (tempat alya)
 
 ---
 
