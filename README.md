@@ -374,7 +374,7 @@ docker swarm init --advertise-addr 10.10.10.10
 
 ```bash
 # Worker1 & Worker2
-docker swarm join --token SWMTKN-1-1yyhenpyfq5e8zaa4pb23i7h5axxxx 10.10.10.10:2377
+docker swarm join --token xxxxxxxxxx 10.10.10.10:2377
 ```
 
 <img width="1702" height="137" alt="rydRSjbq-x" src="https://github.com/user-attachments/assets/90eb5e58-2374-4027-a7dd-e089e0469416" />
