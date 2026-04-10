@@ -1928,7 +1928,7 @@ Pada project ini, Nginx digunakan sebagai reverse proxy yang bertugas untuk:
 - Mengatur routing ke beberapa service (Grafana, Prometheus, MinIO)
 - Menyediakan endpoint health check
 
-### Dockerfile Nginx 
+### Konfigurasi Dockerfile Nginx 
 Dockerfile Nginx digunakan untuk membangun image Nginx yang sudah dikustomisasi.
 ```Dockerfile
 FROM nginx:1.25-alpine
@@ -1974,13 +1974,322 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 Healtcheck digunakan untuk mengecek apakah container masih berjalan dengan baik (healthy).
 Docker akan menjalankan perintah ini secara berkala untuk memastikan service di dalam container (Nginx) tetap aktif dan responsif.
 
+### Konfigurasi nginx.conf
+File nginx.conf adalah inti konfigurasi reverse proxy. File ini mengatur bagaimana setiap request dari client diterima, diproses, dan diteruskan ke service yang tepat.
+
+```conf
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include      /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    log_format main '$remote_addr [$time_local] "$request" $status $body_bytes_sent';
+    access_log /var/log/nginx/access.log main;
+
+    sendfile on;
+    keepalive_timeout 65;
+    client_max_body_size 50M;
+    # limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript
+           text/xml application/xml application/xml+rss;
+
+    upstream django_backend {
+        server backend-django:8000;
+    }
+
+    server {
+        listen 80;
+        server_name layananbuku.netdev;
+        return 301 https://$host$request_uri;
+    }
+
+server {
+        listen 443 ssl;
+        http2 on;
+        server_name layananbuku.netdev;
+
+        ssl_certificate     /run/secrets/nginx_ssl_cert;
+        ssl_certificate_key /run/secrets/nginx_ssl_key;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+        ssl_ciphers         HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers on;
+        ssl_session_cache   shared:SSL:10m;
+        ssl_session_timeout 10m;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options SAMEORIGIN;
+
+        # ── Health check Nginx ──────────────
+        location /health {
+            access_log off;
+            return 200 '{"status":"ok","service":"nginx"}';
+            add_header Content-Type application/json;
+        }
+
+        location /static/ {
+            proxy_pass http://django_backend;
+            proxy_set_header Host $host;
+        }
+
+        location /media/ {
+            proxy_pass http://django_backend;
+            proxy_set_header Host $host;
+        }
+
+         location /api/ {
+
+            # limit_req zone=api burst=20 nodelay;
+
+            proxy_pass http://django_backend;
+
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            proxy_read_timeout 60s;
+        }
+
+         location /admin/ {
+
+            proxy_pass http://django_backend;
+
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location / {
+            proxy_pass http://django_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 60s;
+        }
+
+        location /grafana/ {
+            proxy_pass http://monitoring-grafana:3000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+
+        location /prometheus/ {
+            proxy_pass         http://monitoring-prometheus:9090/;
+            proxy_set_header   Host              $host;
+            proxy_set_header   X-Real-IP         $remote_addr;
+            proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Proto $scheme;
+            proxy_http_version 1.1;
+            proxy_set_header   Upgrade    $http_upgrade;
+            proxy_set_header   Connection "upgrade";
+    }
+
+        location /buku-images-bucket/ {
+            proxy_pass http://storage-minio:9000;
+            proxy_set_header Host $host;
+        }
+    }
+}
+```
+
+**Penjelasan Per Blok** :
+#### Blok Global
+```nginx
+user nginx;
+worker_processes auto;
+```
+Nginx berjalan sebagai user `nginx` untuk keamanan. `auto` artinya Nginx mendeteksi jumlah CPU secara otomatis dan membuat worker process sesuai jumlah CPU yang tersedia.
+ 
+#### Blok Events
+```nginx
+events {
+    worker_connections 1024;
+}
+```
+Setiap worker process dapat menangani maksimal 1024 koneksi bersamaan. Total kapasitas koneksi = jumlah CPU × 1024.
+ 
+#### Pengaturan HTTP Umum
+```nginx
+client_max_body_size 50M;
+```
+Maksimum ukuran file yang bisa diupload adalah 50MB. Penting untuk upload gambar cover buku agar tidak ditolak Nginx sebelum sampai ke Django.
+ 
+```nginx
+limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
+```
+Definisi zona rate limiting bernama `api`. Mengalokasikan 10MB memori untuk menyimpan data IP address. Setiap IP address dibatasi maksimum 30 request per detik.
+ 
+```nginx
+gzip on;
+gzip_types text/plain text/css application/json application/javascript ...;
+```
+Kompres response sebelum dikirim ke client. File JSON, CSS, dan JavaScript dikompres otomatis sehingga data yang ditransfer lebih kecil dan halaman lebih cepat dimuat.
+ 
+#### Upstream Block
+```nginx
+upstream django_backend {
+    server backend-django:8000;
+}
+```
+Mendefinisikan backend Django sebagai upstream. Dengan menggunakan blok `upstream`, konfigurasi alamat backend cukup ditulis satu kali. Jika nama service berubah, hanya perlu diubah di satu tempat ini, tidak perlu mengubah setiap `location` block.
+ 
+#### Server Block 1 — HTTP Redirect
+```nginx
+server {
+    listen 80;
+    server_name layananbuku.netdev;
+    return 301 https://$host$request_uri;
+}
+```
+Menangkap semua request HTTP di port 80 lalu melakukan redirect permanen (kode 301) ke HTTPS. `$host` adalah hostname dari request, `$request_uri` adalah path beserta query string. Dengan ini, URL seperti `http://layananbuku.netdev/catalog/` akan otomatis diarahkan ke `https://layananbuku.netdev/catalog/`.
+ 
+#### Server Block 2 — HTTPS
+```nginx
+listen 443 ssl http2;
+server_name layananbuku.netdev;
+```
+Mendengarkan di port 443 dengan SSL dan HTTP/2 aktif. HTTP/2 lebih efisien dari HTTP/1.1 karena mampu menangani banyak request dalam satu koneksi TCP.
+ 
+```nginx
+ssl_certificate     /run/secrets/nginx_ssl_cert;
+ssl_certificate_key /run/secrets/nginx_ssl_key;
+```
+Membaca file SSL certificate dan private key dari path Docker Secret. Lokasi `/run/secrets/` adalah tempat Docker Swarm secara otomatis me-mount file secret saat container start. Certificate tidak disimpan di dalam image, sehingga lebih aman.
+ 
+```nginx
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_ciphers   HIGH:!aNULL:!MD5;
+```
+Hanya mengizinkan TLS versi 1.2 dan 1.3. Versi lama seperti SSLv3, TLS 1.0, dan TLS 1.1 sudah terbukti memiliki celah keamanan dan diblokir. `!aNULL:!MD5` berarti tidak mengizinkan cipher tanpa autentikasi dan cipher berbasis MD5 yang sudah lemah.
+ 
+#### Security Headers
+```nginx
+add_header Strict-Transport-Security "max-age=31536000" always;
+add_header X-Content-Type-Options nosniff;
+add_header X-Frame-Options SAMEORIGIN;
+```
+Tiga header keamanan penting:
+- **HSTS** → Memaksa browser selalu menggunakan HTTPS selama 1 tahun (31.536.000 detik). Browser tidak akan pernah coba akses HTTP lagi.
+- **X-Content-Type-Options** → Mencegah browser menebak tipe file (MIME sniffing), yang bisa dimanfaatkan untuk serangan XSS.
+- **X-Frame-Options** → Mengizinkan halaman ditampilkan dalam iframe hanya dari domain yang sama, mencegah serangan clickjacking.
+ 
+#### Resolver dan Variable Upstream
+```nginx
+resolver 127.0.0.11 valid=10s;
+resolver_timeout 10s;
+ 
+set $django http://backend-django:8000;
+set $grafana_up http://grafana:3000;
+set $prometheus_up http://prometheus:9090;
+```
+`127.0.0.11` adalah DNS resolver internal Docker Swarm. Dengan menyimpan alamat upstream ke dalam variabel `$django`, `$grafana_up`, dan `$prometheus_up`, Nginx tidak langsung crash saat service backend belum siap ketika startup. Nginx akan me-resolve nama service setiap kali ada request masuk, bukan saat container Nginx pertama kali start.
+ 
+#### Location Blocks — Detail Per Endpoint
+ 
+**`/health` — Dijawab langsung Nginx:**
+```nginx
+location /health {
+    access_log off;
+    return 200 '{"status":"ok","service":"nginx"}';
+    add_header Content-Type application/json;
+}
+```
+Endpoint ini dijawab langsung oleh Nginx tanpa meneruskan request ke Django. `access_log off` agar request health check yang terjadi setiap 30 detik tidak mengotori log. Digunakan oleh Docker HEALTHCHECK dan bisa digunakan untuk monitoring eksternal.
+ 
+**`/api/` — REST API dengan rate limiting:**
+```nginx
+location /api/ {
+    limit_req zone=api burst=20 nodelay;
+    proxy_pass         $django;
+    proxy_set_header   X-Real-IP         $remote_addr;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+}
+```
+- `limit_req zone=api burst=20 nodelay` → Menerapkan rate limiting. Mengizinkan burst 20 request sekaligus, request lebih dari itu langsung ditolak dengan kode 429
+- `X-Real-IP` → Mengirim IP asli client ke Django agar Django tahu siapa yang melakukan request
+- `X-Forwarded-Proto` → Memberitahu Django bahwa request aslinya HTTPS. Tanpa header ini Django bisa mengalami redirect loop karena mengira request datang via HTTP
+- `proxy_read_timeout 60s` → Menunggu response dari Django maksimal 60 detik
+ 
+**`/grafana/` — Dashboard Monitoring:**
+```nginx
+location /grafana/ {
+    proxy_pass         $grafana_up/;
+    proxy_http_version 1.1;
+    proxy_set_header   Upgrade    $http_upgrade;
+    proxy_set_header   Connection "upgrade";
+}
+```
+Header `Upgrade` dan `Connection "upgrade"` diperlukan untuk mendukung protokol WebSocket. Grafana menggunakan WebSocket untuk memperbarui tampilan dashboard secara real-time tanpa perlu refresh halaman browser.
+ 
+**`/prometheus/` — Metrics:**
+```nginx
+location /prometheus/ {
+    proxy_pass $prometheus_up/;
+    proxy_http_version 1.1;
+    proxy_set_header   Upgrade    $http_upgrade;
+    proxy_set_header   Connection "upgrade";
+}
+```
+Meneruskan request ke Prometheus. Dengan konfigurasi ini, Prometheus dapat diakses melalui HTTPS tanpa perlu membuka port 9090 ke publik.
+ 
+**`/` — Halaman Web Django:**
+```nginx
+location / {
+    proxy_pass $django;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+}
+```
+Menangkap semua URL yang tidak cocok dengan location di atasnya. Ini digunakan untuk halaman web Django seperti `/`, `/catalog/`, `/add/`, dan halaman lainnya. Diletakkan paling bawah karena Nginx membaca dari atas ke bawah dan mengambil yang paling spesifik terlebih dahulu.
+ 
+> **Catatan Penting:** Urutan location block sangat berpengaruh. Nginx membaca dari atas ke bawah:
+> 1. `/health` → spesifik, dijawab Nginx
+> 2. `/static/`, `/media/` → spesifik, ke Django
+> 3. `/api/` → spesifik, ke Django + rate limit
+> 4. `/admin/` → spesifik, ke Django
+> 5. `/grafana/` → spesifik, ke Grafana
+> 6. `/prometheus/` → spesifik, ke Prometheus
+> 7. `/` → paling umum, tangkap semua sisanya ke Django
+ 
 
 ---
 
 ## 📊 Konfigurasi Monitoring
+### Cara Kerja Sistem Monitoring
+ 
+Setiap 15 detik Prometheus aktif mengambil data (PULL):
+ 
+node-exporter ──► /metrics → CPU, RAM, Disk, Network per node OS
+cadvisor      ──► /metrics → CPU, RAM, restart count per container
+backend-django──► /metrics → request/detik, response time, error rate
+storage-minio ──► /minio/v2/metrics/cluster → storage usage
+prometheus    ──► localhost:9090 → self-monitoring
+
+Grafana membaca data dari Prometheus
+lalu menampilkan sebagai grafik di browser
+http://layananbuku.netdev/grafana/
 
 ### Dockerfile Prometheus 
-
 ```Dockerfile
 FROM prom/prometheus:latest
 
@@ -2089,6 +2398,116 @@ scrape_configs:
         type: "A"
         port: 9000
 ```
+### Penjelasan prometheus.yml Per Bagian
+#### Bagian Global
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: "layananbuku"
+    env: "production"
+```
+- `scrape_interval: 15s` → Prometheus mengambil data dari semua target setiap 15 detik
+- `evaluation_interval: 15s` → Prometheus mengevaluasi alerting rules setiap 15 detik
+- `external_labels` → Label yang otomatis ditempelkan ke semua data yang dikumpulkan. Berguna sebagai penanda jika ada beberapa cluster Prometheus yang berbeda
+
+#### Job: Prometheus Self-Monitoring
+```yaml
+- job_name: "prometheus"
+  static_configs:
+    - targets: ["localhost:9090"]
+```
+Prometheus memonitor dirinya sendiri. Menggunakan `localhost` karena ini di dalam container yang sama. Data yang dikumpulkan meliputi: berapa target yang berhasil di-scrape, berapa lama durasi proses scraping, berapa memory yang dipakai Prometheus, dan status kesehatan Prometheus secara keseluruhan.
+
+#### Job: Node Exporter
+```yaml
+- job_name: "node-exporter"
+  dns_sd_configs:
+    - names:
+        - "tasks.node-exporter"
+      type: "A"
+      port: 9100
+```
+Menggunakan `dns_sd_configs` (DNS Service Discovery) dengan prefix `tasks.` — ini adalah fitur khusus Docker Swarm yang otomatis me-resolve semua IP dari semua container yang menjalankan service `node-exporter`. Karena node-exporter berjalan dengan `mode: global` (satu per node), DNS ini akan mengembalikan 3 IP sekaligus untuk 3 node. Prometheus akan scrape ketiganya. Data: CPU usage, RAM usage, Disk usage, Network I/O per node OS.
+
+#### Job: cAdvisor
+```yaml
+- job_name: "cadvisor"
+  dns_sd_configs:
+    - names:
+        - "tasks.cadvisor"
+      type: "A"
+      port: 8080
+```
+Sama seperti node-exporter, menggunakan DNS Service Discovery untuk menemukan semua instance cAdvisor di setiap node. Data yang dikumpulkan: CPU dan RAM per container Docker, berapa kali container restart, network I/O per container.
+
+#### Job: Django Application
+```yaml
+- job_name: "django"
+  metrics_path: "/metrics"
+  dns_sd_configs:
+    - names:
+        - "tasks.backend-django"
+      type: "A"
+      port: 8000
+```
+Meng-scrape endpoint `/metrics` dari semua replica Django. `tasks.backend-django` akan me-resolve 3 IP karena Django berjalan dengan 3 replica. Membutuhkan library `django-prometheus` terpasang di Django agar endpoint `/metrics` tersedia. Data: jumlah request per endpoint, response time, jumlah query database, error rate.
+
+#### Job: MinIO Storage
+```yaml
+- job_name: "minio"
+  metrics_path: "/minio/v2/metrics/cluster"
+  dns_sd_configs:
+    - names:
+        - "tasks.storage-minio"
+      type: "A"
+      port: 9000
+```
+Meng-scrape metrics cluster dari MinIO. Endpoint `/minio/v2/metrics/cluster` menyediakan data storage yang lebih lengkap dibanding endpoint health biasa. Data: total storage yang digunakan, jumlah objek/file tersimpan, request rate ke MinIO, error rate.
+
+### Penjelasan Grafana Provisioning
+
+#### datasources/prometheus.yml
+```yaml
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: POST
+```
+Penjelasan setiap field:
+- `access: proxy` → Grafana yang melakukan query ke Prometheus, bukan browser client langsung. Ini lebih aman karena Prometheus tidak perlu terekspos ke publik
+- `url: http://prometheus:9090` → Nama `prometheus` adalah nama service di docker-stack.yml. Docker Swarm otomatis me-resolve nama ini ke IP container Prometheus yang sedang berjalan
+- `isDefault: true` → Menjadikan Prometheus sebagai datasource default untuk semua panel dashboard baru
+- `timeInterval: "15s"` → Harus sama dengan `scrape_interval` di prometheus.yml agar grafik menampilkan data yang akurat dan tidak ada celah kosong
+- `httpMethod: POST` → Grafana mengirim query menggunakan POST method, lebih efisien untuk query panjang
+
+> **Catatan:** File ini dibaca otomatis oleh Grafana saat startup karena di-COPY ke `/etc/grafana/provisioning/datasources/` melalui Dockerfile. Tanpa file ini, datasource Prometheus harus ditambahkan secara manual melalui UI Grafana setiap kali container baru dibuat.
+
+#### dashboards/dashboard.yml
+```yaml
+apiVersion: 1
+providers:
+  - name: "bookstore-dashboards"
+    type: file
+    editable: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+```
+ 
+Penjelasan setiap field:
+- `type: file` → Grafana membaca file dashboard berformat JSON dari filesystem container
+- `editable: true` → Dashboard yang dimuat dari file ini tetap bisa diedit melalui UI Grafana
+- `updateIntervalSeconds: 30` → Grafana memeriksa adanya file dashboard baru atau perubahan setiap 30 detik secara otomatis
+- `path: /var/lib/grafana/dashboards` → Folder di dalam container tempat Grafana mencari file `.json` dashboard
 
 
 
