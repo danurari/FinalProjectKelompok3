@@ -841,6 +841,43 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 ```
+##### Bagian Import (Persiapan)
+from django.contrib import admin: Mengambil modul admin bawaan Django untuk panel kendali database.
+
+from django.urls import path: Mengambil fungsi path yang digunakan untuk mendefinisikan rute URL.
+
+from django.conf import settings: Mengambil konfigurasi dari file settings.py (penting untuk pengaturan file media/gambar).
+
+from django.conf.urls.static import static: Fungsi bantuan untuk melayani file statis atau media selama masa pengembangan.
+
+from django.contrib.auth import views as auth_views: Mengambil sistem otentikasi bawaan Django (seperti login/logout).
+
+from buku import views: Mengambil file views.py dari aplikasi bernama buku yang berisi logika tampilan dashboard, katalog, dll.
+
+##### Bagian urlpatterns (Daftar Alamat)
+Ini adalah daftar yang mencocokkan alamat URL dengan fungsi di views.py.
+
+path('', include('django_prometheus.urls')): Digunakan untuk monitoring performa aplikasi menggunakan Prometheus (biasanya untuk melihat statistik server).
+
+path('admin/', admin.site.urls): Alamat untuk masuk ke halaman admin panel Django (/admin/).
+
+path('', views.dashboard, name='dashboard'): Halaman utama (root). Jika kamu buka localhost:8000/, fungsi dashboard akan dijalankan.
+
+path('/catalog/', views.catalog, name='catalog'): Mengarahkan alamat /catalog/ ke fungsi catalog untuk menampilkan daftar buku.
+
+path('/add/', views.add_book, name='add_book'): Mengarahkan alamat /add/ ke fungsi untuk menambah buku baru.
+
+##### Bagian Detail & Manipulasi Data (Dynamic URL):
+
+path('book/<int:pk>/', ...): Alamat detail buku. <int:pk> adalah variabel dinamis (Primary Key/ID buku). Contoh: /book/5/ akan menampilkan detail buku dengan ID nomor 5.
+
+path('book/<int:pk>/edit/', ...): Alamat untuk mengedit buku berdasarkan ID-nya.
+
+path('book/<int:pk>/delete/', ...): Alamat untuk menghapus buku berdasarkan ID-nya.
+
+Bagian Otentikasi:
+
+path('logout/', auth_views.LogoutView.as_view(), ...): Fungsi otomatis dari Django untuk mengeluarkan pengguna (logout) dari sistem.
 
 #### 2. Struktur Folder Template
 Penyimpanan file HTML dilakukan secara modular di dalam folder aplikasi books/templates/. Pemisahan ini memudahkan pengelolaan kode antara layout utama dan konten spesifik.
