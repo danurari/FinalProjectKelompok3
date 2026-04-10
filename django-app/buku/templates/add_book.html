@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}BookFlow - Tambah Stok Baru{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Content Wrapper khusus halaman form */
+    .form-container { 
+        background: #ffffff; 
+        border: 1px solid #e2e8f0; 
+        border-radius: 20px; 
+        padding: 40px; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02); 
+        position: relative; 
+        max-width: 950px; 
+    }
+    
+    /* Typography */
+    .page-title { font-weight: 800; font-size: 1.85rem; color: #1e293b; margin-bottom: 8px; }
+    .page-subtitle { color: #64748b; font-size: 0.95rem; margin-bottom: 30px; }
+
+    .btn-back-top { color: #64748b; text-decoration: none; font-weight: 600; font-size: 0.85rem; transition: 0.2s; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+    .btn-back-top:hover { color: #3b82f6; }
+
+    .spec-header { border-left: 4px solid #3b82f6; padding-left: 15px; margin-bottom: 30px; }
+    .form-label { font-weight: 600; color: #334155; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .form-control { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; background-color: #fcfdfe; }
+    
+    .upload-box { border: 2px dashed #cbd5e1; border-radius: 14px; padding: 30px 20px; text-align: center; background: #f8fafc; cursor: pointer; }
+    .upload-box:hover { border-color: #3b82f6; background: #f0f7ff; }
+    
+    .btn-save { background-color: #3b82f6; color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 700; transition: 0.3s; }
+    .btn-save:hover { background-color: #2563eb; transform: translateY(-2px); }
+
+    .icon-floating { width: 45px; height: 45px; background: #eff6ff; color: #3b82f6; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+        <h1 class="page-title">Add New Book to Storage</h1>
+        <p class="page-subtitle">Enter the details below to catalog a new addition to your personal collection.</p>
+    </div>
+    <div class="icon-floating shadow-sm">
+        <i class="bi bi-journal-plus"></i>
+    </div>
+</div>
+
+<div class="form-container">
+    <a href="{% url 'catalog' %}" class="btn-back-top">
+        <i class="bi bi-arrow-left"></i> Kembali ke Katalog
+    </a>
+
+    <form method="POST" enctype="multipart/form-data" action="{% url 'add_book' %}">
+        {% csrf_token %}
+        
+        <div class="spec-header">
+            <h6 class="fw-bold mb-1">Book Specifications</h6>
+            <p class="text-muted small">All fields are required for accurate inventory tracking.</p>
+        </div>
+
+        <div class="d-flex flex-column gap-4">
+            <div>
+                <label class="form-label"><i class="bi bi-book text-primary"></i> Book Title</label>
+                <input type="text" name="judul" class="form-control" placeholder="e.g. The Great Gatsby" required>
+            </div>
+
+            <div>
+                <label class="form-label"><i class="bi bi-person text-primary"></i> Author Name</label>
+                <input type="text" name="penulis" class="form-control" placeholder="e.g. F. Scott Fitzgerald" required>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label"><i class="bi bi-hash text-primary"></i> Total Pages</label>
+                    <input type="number" name="halaman" class="form-control" placeholder="e.g. 180" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label"><i class="bi bi-calendar-event text-primary"></i> Year Published</label>
+                    <input type="number" name="tahun_terbit" class="form-control" placeholder="e.g. 1925" required>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label"><i class="bi bi-image text-primary"></i> Book Cover Image</label>
+                <div class="upload-box" onclick="document.getElementById('sampul_buku').click();">
+                    <i class="bi bi-cloud-arrow-up text-primary fs-2 mb-2 d-block"></i>
+                    <span class="d-block fw-bold small" id="file-name-text">Click to upload or drag and drop</span>
+                    <input type="file" name="sampul_buku" id="sampul_buku" hidden accept="image/*" required onchange="displayFileName(this)">
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-4 border-top pt-4">
+                <a href="{% url 'catalog' %}" class="text-decoration-none text-muted fw-medium small">Cancel and Return</a>
+                <button type="submit" class="btn btn-save shadow-sm">Save Book</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function displayFileName(input) {
+        if (input.files && input.files[0]) {
+            const fileName = input.files[0].name;
+            const displayText = document.getElementById('file-name-text');
+            displayText.innerText = "Terpilih: " + fileName;
+            displayText.style.color = "#3b82f6";
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}BookFlow - Katalog Buku{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; }
+    .book-card { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff; transition: 0.2s; height: 100%; display: flex; flex-direction: column; cursor: pointer; text-decoration: none; color: inherit; }
+    .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: #3b82f6; }
+    .cover-wrapper { height: 220px; background-color: #f1f5f9; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .cover-img { width: 100%; height: 100%; object-fit: cover; }
+    .book-info { padding: 16px; flex-grow: 1; }
+    .book-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; color: #0f172a; }
+
+    {% if view_mode == 'list' %}
+    .book-grid-container { display: block !important; }
+    .book-grid-container > .col { width: 100% !important; margin-bottom: 12px; }
+    .book-card { flex-direction: row !important; height: 100px !important; }
+    .cover-wrapper { width: 75px !important; height: 100px !important; flex-shrink: 0; }
+    .book-info { display: flex; flex-direction: column; justify-content: center; padding: 0 20px; }
+    {% endif %}
+    .cursor-pointer { cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">Book Catalog</h3>
+            <p class="text-muted mb-0" style="font-size: 0.9rem;">Manage and organize your book inventory.</p>
+        </div>
+        <a href="{% url 'add_book' %}" class="btn fw-medium btn-sm px-3 shadow-sm text-white" style="background-color: #3aa1ff;">
+            <i class="bi bi-plus-circle me-1"></i> Add New Book
+        </a>
+    </div>
+
+    <!-- Toolbar: Search & Sort -->
+    <div class="filter-bar mb-4 shadow-sm">
+        <div class="row align-items-center g-3">
+            <div class="col-md-6">
+                <form action="{% url 'catalog' %}" method="GET" class="position-relative">
+                    <input type="hidden" name="sort" value="{{ current_sort }}">
+                    <input type="hidden" name="view" value="{{ view_mode }}">
+                    <input type="hidden" name="tahun" value="{{ current_year }}">
+                    <i class="bi bi-search position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%);"></i>
+                    <input type="text" name="q" value="{{ query }}" class="form-control border-0 bg-light py-2 ps-5" placeholder="Search titles, authors..." style="font-size: 0.85rem; border-radius: 8px;">
+                </form>
+            </div>
+
+            <div class="col-md-6 d-flex justify-content-end align-items-center gap-4">
+                <div class="btn-group border rounded p-1 bg-light">
+                    <a href="?view=grid&sort={{ current_sort }}&tahun={{ current_year }}&q={{ query }}" class="btn btn-sm {% if view_mode != 'list' %}bg-white shadow-sm{% else %}text-muted border-0{% endif %}">
+                        <i class="bi bi-grid"></i>
+                    </a>
+                    <a href="?view=list&sort={{ current_sort }}&tahun={{ current_year }}&q={{ query }}" class="btn btn-sm {% if view_mode == 'list' %}bg-white shadow-sm{% else %}text-muted border-0{% endif %}">
+                        <i class="bi bi-list-ul"></i>
+                    </a>
+                </div>
+
+                <div class="d-flex align-items-center gap-2" style="font-size: 0.85rem; color: #64748b;">
+                    <span>Sort by:</span>
+                    <div class="dropdown">
+                        <span class="fw-bold text-dark cursor-pointer dropdown-toggle" data-bs-toggle="dropdown">
+                            {% if current_sort == 'judul' %}Judul (A-Z)
+                            {% elif current_sort == 'tahun_desc' %}Baru Terbit
+                            {% elif current_year %}Tahun: {{ current_year }}
+                            {% else %}Recently Added{% endif %}
+                        </span>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><a class="dropdown-item" href="?sort=-id&view={{ view_mode }}&q={{ query }}">Recently Added</a></li>
+                            <li><a class="dropdown-item" href="?sort=judul&view={{ view_mode }}&q={{ query }}">Judul (A-Z)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% for year in years_list %}
+                            <li><a class="dropdown-item" href="?tahun={{ year }}&sort={{ current_sort }}&view={{ view_mode }}&q={{ query }}">{{ year }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Loop -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4 mb-5 book-grid-container">
+        {% for buku in data_buku %}
+        <div class="col">
+            <a href="{% url 'book_detail' buku.id %}" class="book-card shadow-sm">
+                <div class="cover-wrapper">
+                    {% if buku.sampul_buku %}
+                        <img src="{{ buku.sampul_buku.url }}" class="cover-img" alt="{{ buku.judul }}">
+                    {% else %}
+                        <i class="bi bi-image" style="font-size: 3rem; color: #cbd5e1;"></i>
+                    {% endif %}
+                </div>
+                <div class="book-info">
+                    <h5 class="book-title">{{ buku.judul }}</h5>
+                    <p class="text-muted small mb-2">{{ buku.penulis }}</p>
+                    <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.7rem;">{{ buku.tahun_terbit }}</span>
+                </div>
+            </a>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <i class="bi bi-journal-x fs-1 text-muted mb-3 d-block"></i>
+            <h5 class="text-secondary fw-bold">No books found</h5>
+        </div>
+        {% endfor %}
+    </div>
+{% endblock %}

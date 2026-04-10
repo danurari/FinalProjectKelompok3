@@ -1,1 +1,185 @@
 # Ini bakal diisi stacknya
+version: "3.8"
+
+networks:
+  bookstorage_network:
+    driver: overlay
+
+volumes:
+  postgres_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+
+secrets:
+  postgres_user:
+    external: true
+  postgres_password:
+    external: true
+  postgres_db:
+    external: true
+  minio_root_user:
+    external: true
+  minio_root_password:
+    external: true
+  django_secret_key:
+    external: true
+  nginx_ssl_cert:
+    external: true
+  nginx_ssl_key:
+    external: true
+  grafana_admin_user:
+    external: true
+  grafana_admin_password:
+    external: true
+
+services:
+  proxy-nginx:
+    image: ${NGINX_IMAGE:-dzakky1/bookstorage-nginx:latest}
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - bookstorage_network
+    secrets:
+      - nginx_ssl_cert
+      - nginx_ssl_key
+    depends_on:
+      - backend-django
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  backend-django:
+    image: ${DJANGO_IMAGE:-alyayes/bookstorage-django:latest}
+    networks:
+      - bookstorage_network
+    secrets:
+      - django_secret_key
+      - postgres_user
+      - postgres_password
+      - postgres_db
+      - minio_root_user
+      - minio_root_password
+    environment:
+      - DB_HOST=database-postgres
+      - MINIO_URL=http://storage-minio:9000
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_EMAIL=admin@layananbuku.netdev
+      - DJANGO_SUPERUSER_PASSWORD=AdminKuat123!
+    deploy:
+      replicas: 3
+      placement:
+        constraints:
+          - node.hostname != worker2
+        max_replicas_per_node: 2
+
+  database-postgres:
+    image: ${POSTGRES_IMAGE:-danurar1/bookstorage-postgresql:latest}
+    networks:
+      - bookstorage_network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    secrets:
+      - postgres_user
+      - postgres_password
+      - postgres_db
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB_FILE: /run/secrets/postgres_db
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == worker2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$(cat /run/secrets/postgres_user) -d $$(cat /run/secrets/postgres_db)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  storage-minio:
+    image: ${MINIO_IMAGE:-danurar1/bookstorage-minio:latest}
+    networks:
+      - bookstorage_network
+    volumes:
+      - minio_data:/data
+    secrets:
+      - minio_root_user
+      - minio_root_password
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_root_user
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_root_password
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == worker2
+
+  monitoring-prometheus:
+    image: ${PROMETHEUS_IMAGE:-dzakky1/bookstorage-prometheus:latest}
+    networks:
+      - bookstorage_network
+    volumes:
+      - prometheus_data:/prometheus
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  monitoring-grafana:
+    image: ${GRAFANA_IMAGE:-dzakky1/bookstorage-grafana:latest}
+    networks:
+      - bookstorage_network
+    volumes:
+      - grafana_data:/var/lib/grafana
+    secrets:
+      - grafana_admin_user
+      - grafana_admin_password
+    environment:
+      - GF_SERVER_DOMAIN=layananbuku.netdev
+      - GF_SERVER_ROOT_URL=https://layananbuku.netdev/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+  node-exporter:
+    image: prom/node-exporter:latest
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      - bookstorage_network
+    deploy:
+      mode: global
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - bookstorage_network
+    deploy:
+      mode: global
