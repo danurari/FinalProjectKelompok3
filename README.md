@@ -2328,7 +2328,7 @@ Berikut adalah langkah-langkah taktis untuk pembuktian infrastruktur swarm
 **Tujuan:** Membuktikan bahwa matinya satu *server* (VM) tidak akan membuat layanan web terputus.
 
 **Langkah Eksekusi:**
-1. Buka web `https://layananbuku.netdev/` di *browser* laptop Anda, pastikan berjalan lancar.
+1. Buka web `https://layananbuku.netdev/` di *browser*, pastikan berjalan lancar.
 <img width="1915" height="956" alt="image" src="https://github.com/user-attachments/assets/e7d1ece1-41a4-4fc5-8cb8-c479b3736772" />
 2. Buka terminal **Manager VM**, pantau persebaran aplikasi dengan mengetik perintah:
    ```bash
@@ -2385,7 +2385,7 @@ Berikut adalah langkah-langkah taktis untuk pembuktian infrastruktur swarm
 **Tujuan:** Membuktikan bahwa seluruh trafik dienkripsi dan basis data serta *backend* tidak terekspos ke publik.
 
 **Langkah Eksekusi:**
-1. Buka *browser* dan akses `https://layananbuku.netdev/`. Di pojok kiri ada tulisan *not secure*, https berjalan, namun browser tidak mengenali sertifikat (karena memakai self signed certificate bukan ssl resmi
+1. Buka *browser* dan akses `https://layananbuku.netdev/`. Di pojok kiri ada tulisan *not secure*, ssl berjalan, namun browser tidak mengenali sertifikat (karena memakai self signed certificate bukan ssl resmi
 <img width="1917" height="955" alt="image" src="https://github.com/user-attachments/assets/0500846c-8303-476b-b86f-c0ffed7c33e2" />
 <img width="464" height="498" alt="image" src="https://github.com/user-attachments/assets/8196f295-e8ee-436b-96e1-100daf336546" />
 
@@ -2396,12 +2396,12 @@ Berikut adalah langkah-langkah taktis untuk pembuktian infrastruktur swarm
 3. **HANYA** *service* `proxy-nginx` yang memiliki konfigurasi *port mapping* (`*:80->80/tcp` dan `*:443->443/tcp`). *Service* `backend-django` dan `database-postgres` murni beroperasi di *internal port*.
 <img width="1494" height="281" alt="image" src="https://github.com/user-attachments/assets/fe4d1d6e-c838-4200-b975-28dff0bd0bd7" />
 
-4. Lakukan tes penetrasi sederhana dari terminal laptop Anda (dari luar ekosistem VM). Coba tembak *port* aplikasi Django secara langsung dengan mengetik:
+4. Lakukan tes penetrasi sederhana dari terminal laptop (dari luar ekosistem VM). Coba tembak *port* aplikasi Django secara langsung dengan mengetik:
    ```powershell
    Test-NetConnection -ComputerName 10.10.10.10 -Port 8000
    ```
 
-5. Hasil pengujian pada baris TcpTestSucceeded pasti akan bernilai False (atau muncul peringatan gagal koneksi). Aplikasi hanya bisa diakses lewat nginx
+5. Hasil pengujian pada baris TcpTestSucceeded pasti akan bernilai False. Aplikasi hanya bisa diakses lewat nginx
    <img width="1424" height="395" alt="image" src="https://github.com/user-attachments/assets/9624ee91-d2d5-46de-9ad7-67fcf77f213b" />
 
 ---
@@ -2420,8 +2420,9 @@ Berikut adalah langkah-langkah taktis untuk pembuktian infrastruktur swarm
       insecureSkipTLSVerify: true,
     
       stages: [
-        { duration: "30s", target: 50 },
-        { duration: "2m", target: 200 },
+        { duration: "30s", target: 200 },
+        { duration: "30s", target: 220 },
+        { duration: "30s", target: 200 },
         { duration: "30s", target: 0 },
       ],
     
@@ -2440,8 +2441,10 @@ Berikut adalah langkah-langkah taktis untuk pembuktian infrastruktur swarm
         "status is 200 OK": (r) => r.status === 200,
       });
     
-      sleep(1);
+      sleep(0.5);
     }
+
+
 
    ```
    perintah pada laptop:
@@ -2453,15 +2456,11 @@ Berikut adalah langkah-langkah taktis untuk pembuktian infrastruktur swarm
 
 4. Lipat gandakan jumlah replika *backend* dari 3 menjadi 6 *container* secara *real-time*:
    ```bash
-   docker service scale bookstorage_backend-django=6
+   docker service scale bookstorage_backend-django=4
    ```
-5. Buka **Grafana** di *browser*, tunjukkan grafik CPU *container* Django yang perlahan menurun karena beban kerja mulai didistribusikan secara merata ke 6 *container* oleh Nginx *Load Balancer*.
+5. Buka **Grafana** di *browser*, tunjukkan grafik CPU *container* Django yang perlahan menurun karena beban kerja mulai didistribusikan secara merata ke 4 *container* oleh Nginx *Load Balancer*.
 6. Biarkan k6 berjalan sampai waktu habis.
-7. Saat k6 selesai, lihat rekapitulasi akhir (*Summary*) di terminal laptop Anda. Cari baris metrik:
-   ```text
-   http_req_failed..................: 0.00%
-   ```
-8. Tunjukkan angka `0.00%` ini ke dosen penguji. *(Penjelasan untuk dosen: Ini adalah bukti absolut bahwa penambahan kapasitas server (scaling up) di tengah badai traffic terjadi dengan sangat mulus, tanpa ada satupun request dari pengunjung yang gagal/dibatalkan).*
+
 ---
 ## 👨‍💻 Tim Pengembang
 
