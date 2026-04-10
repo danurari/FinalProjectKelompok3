@@ -695,7 +695,1088 @@ Menyiapkan script otomatisasi deployment agar aplikasi terbungkus menjadi image 
 
 * **Build Image:** Proses kompilasi Dockerfile menjadi Image yang utuh tidak dilakukan secara manual, melainkan dikonfigurasi melalui pipeline GitHub Actions yang akan men-deploy dan mendistribusikan image tersebut ke dalam Registry milik penulis kode secara terotomatisasi (CI/CD).
 ### Frontend Django
-> (tempat alya)
+Bagian ini menjelaskan implementasi antarmuka pengguna (UI) yang dibangun menggunakan Django Template Engine, Bootstrap 5, dan integrasi logika frontend untuk mengelola data buku.
+
+#### 1. Jembatan Integrasi (Views & URLs)
+Sebelum masuk ke desain, berikut adalah logika controller dan routing yang menghubungkan Model dengan Template HTML.
+
+##### A. Logika Bisnis (books/views.py)
+Mengatur distribusi variabel data (context) ke dalam file HTML.
+
+```python
+from django.shortcuts import render, redirect, get_object_or_404  
+from .models import Buku
+from django.db.models import Q, Sum, Count 
+
+def dashboard(request):
+    total_buku = Buku.objects.count()
+    total_halaman = Buku.objects.aggregate(Sum('halaman'))['halaman__sum'] or 0
+    
+    penulis_data = Buku.objects.values('penulis').annotate(total=Count('id')).order_by('-total').first()
+    penulis_teraktif = penulis_data['penulis'] if penulis_data else "-"
+
+    buku_terbaru = Buku.objects.all().order_by('-id')[:5]
+    
+    context = {
+        'total_buku': total_buku,
+        'total_halaman': total_halaman,
+        'penulis_terpopuler': penulis_teraktif,
+        'buku_terbaru': buku_terbaru,
+    }
+    return render(request, 'dashboard.html', context)
+
+def catalog(request):
+    query = request.GET.get('q', '')
+    tahun_filter = request.GET.get('tahun', '')
+    sort_by = request.GET.get('sort', '-id')
+    view_mode = request.GET.get('view', 'grid')
+
+    data_buku = Buku.objects.all()
+    if query:
+        data_buku = data_buku.filter(Q(judul__icontains=query) | Q(penulis__icontains=query))
+    
+    if tahun_filter:
+        data_buku = data_buku.filter(tahun_terbit=tahun_filter)
+
+    if sort_by == 'judul':
+        data_buku = data_buku.order_by('judul')
+    elif sort_by == 'penulis':
+        data_buku = data_buku.order_by('penulis')
+    elif sort_by == 'tahun_desc':
+        data_buku = data_buku.order_by('-tahun_terbit')
+    elif sort_by == 'tahun_asc':
+        data_buku = data_buku.order_by('tahun_terbit')
+    else:
+        data_buku = data_buku.order_by('-id')
+
+    years_list = Buku.objects.values_list('tahun_terbit', flat=True).distinct().order_by('-tahun_terbit')
+
+    context = {
+        'data_buku': data_buku,
+        'query': query,
+        'years_list': years_list,
+        'current_year': tahun_filter,
+        'current_sort': sort_by,
+        'view_mode': view_mode,
+    }
+    return render(request, 'catalog.html', context)
+
+def add_book(request):
+    if request.method == "POST":
+        v_judul = request.POST.get('judul')
+        v_penulis = request.POST.get('penulis')
+        v_halaman = request.POST.get('halaman')
+        v_tahun = request.POST.get('tahun_terbit')
+        v_sampul = request.FILES.get('sampul_buku')
+
+        Buku.objects.create(
+            judul=v_judul,
+            penulis=v_penulis,
+            halaman=v_halaman,
+            tahun_terbit=v_tahun,
+            sampul_buku=v_sampul
+        )
+        return redirect('catalog')
+        
+    return render(request, 'add_book.html')
+
+def book_detail(request, pk):
+    buku = get_object_or_404(Buku, pk=pk)
+    return render(request, 'book_detail.html', {'buku': buku})
+
+def edit_book(request, pk):
+    buku = get_object_or_404(Buku, pk=pk)
+    
+    if request.method == "POST":
+        buku.judul = request.POST.get('judul')
+        buku.penulis = request.POST.get('penulis')
+        buku.halaman = request.POST.get('halaman')
+        buku.tahun_terbit = request.POST.get('tahun_terbit')
+        
+        sampul_baru = request.FILES.get('sampul_buku')
+        if sampul_baru:
+            buku.sampul_buku = sampul_baru
+            
+        buku.save()
+        return redirect('book_detail', pk=buku.pk)
+        
+    return render(request, 'edit_book.html', {'buku': buku})
+
+def delete_book(request, pk):
+    buku = get_object_or_404(Buku, pk=pk)
+    
+    if request.method == "POST":
+        buku.delete()
+        return redirect('catalog')
+        
+    return redirect('book_detail', pk=pk)
+```
+
+##### B. Pemetaan Jalur Akses (books/urls.py)
+Mendaftarkan path untuk navigasi antar halaman.
+
+```python
+from django.contrib import admin
+from django.urls import path
+from django.conf import settings 
+from django.conf.urls.static import static 
+from django.contrib.auth import views as auth_views 
+from buku import views
+
+urlpatterns = [
+    path('', include('django_prometheus.urls')),
+    path('admin/', admin.site.urls),
+    path('', views.dashboard, name='dashboard'),
+    path('/catalog/', views.catalog, name='catalog'),       # Alamat: /catalog/
+    path('/add/', views.add_book, name='add_book'),         # Alamat: /add/
+
+    path('book/<int:pk>/', views.book_detail, name='book_detail'),
+    path('book/<int:pk>/edit/', views.edit_book, name='edit_book'),
+    path('book/<int:pk>/delete/', views.delete_book, name='delete_book'),
+
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+]
+
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+#### 2. Struktur Folder Template
+Penyimpanan file HTML dilakukan secara modular di dalam folder aplikasi books/templates/. Pemisahan ini memudahkan pengelolaan kode antara layout utama dan konten spesifik.
+
+```
+Plaintext
+books/
+└── templates/
+    ├── base.html         # (Utama) Kerangka dasar Sidebar & Topbar
+    ├── dashboard.html    # Ringkasan statistik & Recent books
+    ├── catalog.html      # Katalog (Search, Sort, Grid/List)
+    ├── book_detail.html  # Detail informasi & Tombol aksi
+    ├── add_book.html     # Form input stok baru
+    └── edit_book.html    # Form pembaruan data
+```
+
+#### 3. Template Architecture & Inheritance
+Kami menggunakan teknik Template Inheritance untuk memastikan konsistensi UI di seluruh aplikasi tanpa redundansi kode. Seluruh halaman utama mewarisi struktur dari base.html.
+
+- Header & Sidebar: Didefinisikan secara global.
+- Blocks: Menggunakan {% block content %} sebagai placeholder konten dinamis.
+- Active Navigation: Menggunakan logika request.resolver_match untuk mendeteksi halaman aktif secara otomatis.
+
+```html
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BookFlow{% endblock %}</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        
+        /* Sidebar Styling */
+        .sidebar { 
+            width: 260px; 
+            background-color: #ffffff; 
+            border-right: 1px solid #e2e8f0; 
+            height: 100vh; 
+            position: fixed; 
+            left: 0; 
+            top: 0; 
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .brand-section { padding: 24px; }
+        .brand-logo { color: #3b82f6; font-weight: 700; font-size: 1.25rem; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+
+        .nav-link-custom { 
+            color: #64748b; 
+            font-weight: 500; 
+            padding: 12px 16px; 
+            border-radius: 10px; 
+            margin: 4px 16px; 
+            text-decoration: none; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            transition: 0.2s; 
+            font-size: 0.9rem; 
+        }
+
+        .nav-link-custom:hover { background-color: #f1f5f9; color: #1e293b; }
+
+        .nav-link-active { 
+            background-color: #3b82f6 !important; 
+            color: #ffffff !important; 
+            font-weight: 600; 
+        }
+
+        /* Logout Section */
+        .logout-section { 
+            padding: 20px; 
+            border-top: 1px solid #e2e8f0; 
+            margin-top: auto; 
+        }
+
+        .btn-logout { 
+            color: #dc3545; 
+            text-decoration: none; 
+            font-weight: 600; 
+            font-size: 0.95rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-start; 
+            gap: 12px;
+            background: none;
+            border: none;
+            width: 100%;
+            padding: 12px 16px;
+        }
+
+        /* Main Layout */
+        .main-wrapper { margin-left: 260px; min-height: 100vh; width: calc(100% - 260px); }
+        
+        .top-navbar { 
+            background: #ffffff; 
+            border-bottom: 1px solid #e2e8f0; 
+            height: 70px; 
+            padding: 0 30px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-end; 
+            position: sticky; 
+            top: 0; 
+            z-index: 900;
+        }
+
+        /* --- DASHBOARD CSS --- */
+        .card-stats { 
+            border: 1px solid #e2e8f0; 
+            border-radius: 12px; 
+            background: white; 
+            padding: 16px; 
+            height: 100%; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03); 
+            display: flex;
+            flex-direction: column;
+        }
+        .icon-box-round { 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 6px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1rem; 
+            margin-bottom: 10px;
+        }
+        .card-list { border: 1px solid #e2e8f0; border-radius: 12px; background: white; padding: 20px; }
+        .book-item { padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .book-item:last-child { border-bottom: none; }
+        
+        .badge-new { background-color: #fef9c3; color: #854d0e; font-size: 0.6rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 6px; }
+        .workflow-header { background-color: #3b82f6; color: white; border-radius: 12px 12px 0 0; padding: 15px 20px; border: none; }
+        .workflow-body { background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; padding: 5px 15px 15px 15px; }
+        .workflow-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; margin-top: 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s; text-decoration: none; color: inherit; }
+        .workflow-item:hover { border-color: #3b82f6; background-color: #f8fafc; }
+        .tips-card { background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px; margin-top: 15px; font-size: 0.8rem; }
+
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar shadow-sm">
+        <div class="brand-section">
+            <a href="{% url 'dashboard' %}" class="brand-logo">
+                <i class="bi bi-box-seam-fill"></i> BookFlow
+            </a>
+        </div>
+
+        <nav class="flex-grow-1">
+            <a href="{% url 'dashboard' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'dashboard' %}nav-link-active{% endif %}">
+                <i class="bi bi-grid-1x2-fill"></i> Dashboard
+            </a>
+            <a href="{% url 'catalog' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'catalog' %}nav-link-active{% endif %}">
+                <i class="bi bi-stack"></i> Book Catalog
+            </a>
+            <a href="{% url 'add_book' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'add_book' %}nav-link-active{% endif %}">
+                <i class="bi bi-plus-circle"></i> Add New Book
+            </a>
+        </nav>
+
+        <div class="logout-section">
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn-logout">
+                    <i class="bi bi-box-arrow-left"></i> Logout
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <header class="top-navbar">
+            <div class="d-flex align-items-center gap-2">
+                <div class="text-end">
+                    <p class="mb-0 fw-bold small">{{ user.username }}</p>
+                    <p class="mb-0 text-muted" style="font-size: 0.7rem;">Administrator</p>
+                </div>
+                <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=eff6ff&color=3b82f6" class="rounded-circle border" width="38" height="38">
+            </div>
+        </header>
+
+        <main class="p-4 p-lg-5">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+```
+
+#### 4.Implementasi Dashboard & Statistik
+Halaman Dashboard berfungsi sebagai pusat kendali inventaris dengan visualisasi data agregat.
+
+Data Aggregation: Menampilkan {{ total_buku }}, {{ total_halaman }}, dan {{ penulis_terpopuler }}.
+Recent Activity: Menggunakan forloop.counter untuk memberikan label <span class="badge-new"> pada unit yang baru saja masuk.
+
+```html
+{% extends 'base.html' %}
+
+{% block title %}BookFlow - Storage Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-stats { border: 1px solid #e2e8f0; border-radius: 12px; background: white; padding: 16px; height: 100%; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+    .card-stats h2 { font-size: 1.5rem; font-weight: 700; margin: 4px 0; }
+    .card-stats h6 { font-size: 0.75rem; letter-spacing: 0.02em; }
+    .card-stats .icon-box-round { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    
+    .card-list { border: 1px solid #e2e8f0; border-radius: 12px; background: white; padding: 20px; }
+    .book-item { padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+    .book-item:last-child { border-bottom: none; }
+    
+    .book-cover-sm { width: 40px; height: 55px; border-radius: 4px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; }
+    .book-cover-img { width: 40px; height: 55px; border-radius: 4px; object-fit: cover; border: 1px solid #e2e8f0; }
+    
+    .badge-new { background-color: #fef9c3; color: #854d0e; font-size: 0.6rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 6px; }
+    
+    .workflow-header { background-color: #3b82f6; color: white; border-radius: 12px 12px 0 0; padding: 15px 20px; border: none; }
+    .workflow-body { background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; padding: 5px 15px 15px 15px; }
+    .workflow-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; margin-top: 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s; text-decoration: none; color: inherit; }
+    .workflow-item:hover { border-color: #3b82f6; background-color: #f8fafc; }
+    .tips-card { background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px; margin-top: 15px; font-size: 0.8rem; }
+
+    .dashboard-search { position: absolute; left: 30px; top: 15px; width: 350px; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Dashboard Summary</h4>
+            <p class="text-muted small mb-0">Total {{ total_buku }} book units currently stored.</p>
+        </div>
+        <a href="{% url 'add_book' %}" class="btn btn-primary btn-sm rounded-3 px-3 py-2 fw-bold shadow-sm">
+            <i class="bi bi-plus-lg me-2"></i> Add Inventory
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card-stats">
+                <div class="icon-box-round bg-primary bg-opacity-10 text-primary mb-2"><i class="bi bi-box"></i></div>
+                <h6 class="text-muted fw-bold mb-0">Total Book Stock</h6>
+                <h2>{{ total_buku }}</h2>
+                <small class="text-muted" style="font-size: 0.65rem;">Total physical units in warehouse</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-stats">
+                <div class="icon-box-round bg-info bg-opacity-10 text-info mb-2"><i class="bi bi-person-badge"></i></div>
+                <h6 class="text-muted fw-bold mb-0">Most Active Author</h6>
+                <h2>{{ penulis_terpopuler|default:"-" }}</h2>
+                <small class="text-muted" style="font-size: 0.65rem;">Largest collection by author</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-stats">
+                <div class="icon-box-round bg-primary bg-opacity-10 text-primary mb-2"><i class="bi bi-journal-text"></i></div>
+                <h6 class="text-muted fw-bold mb-0">Total Pages Stored</h6>
+                <h2>{{ total_halaman|default:"0" }}</h2>
+                <small class="text-muted" style="font-size: 0.65rem;">Accumulated volume of all books</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card-list">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold m-0">Recently Added Units</h6>
+                    <a href="{% url 'catalog' %}" class="text-primary fw-bold text-decoration-none" style="font-size: 0.75rem;">Full Catalog <i class="bi bi-chevron-right ms-1"></i></a>
+                </div>
+                
+                <div class="book-list">
+                    {% for buku in buku_terbaru %}
+                    <div class="book-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="cover-wrapper">
+                                {% if buku.sampul_buku %}
+                                    <img src="{{ buku.sampul_buku.url }}" class="book-cover-img" alt="{{ buku.judul }}">
+                                {% else %}
+                                    <div class="book-cover-sm">{{ buku.judul|slice:":1"|upper }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div>
+                                <div class="d-flex align-items-center">
+                                    <span class="fw-bold small">{{ buku.judul }}</span>
+                                    {% if forloop.counter <= 2 %}<span class="badge-new">New</span>{% endif %}
+                                </div>
+                                <div class="text-muted" style="font-size: 0.7rem;">{{ buku.penulis }} • Published {{ buku.tahun_terbit }} • {{ buku.halaman }} Pages</div>
+                            </div>
+                        </div>
+                        <a href="{% url 'book_detail' buku.id %}" class="btn btn-light btn-sm border rounded-pill px-3" style="font-size: 0.7rem; font-weight: 600;">Details</a>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                        <p class="text-muted small">No book data currently stored.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="workflow-header">
+                <h6 class="fw-bold mb-0 small"><i class="bi bi-gear-wide-connected me-2"></i> Operations</h6>
+            </div>
+            <div class="workflow-body shadow-sm">
+                <a href="{% url 'add_book' %}" class="workflow-item">
+                    <div class="icon-box-round bg-primary bg-opacity-10 text-primary" style="width: 28px; height: 28px; font-size: 0.8rem;"><i class="bi bi-plus-square"></i></div>
+                    <div>
+                        <h6 class="fw-bold mb-0" style="font-size: 0.75rem;">Input New Stock</h6>
+                        <p class="text-muted m-0" style="font-size: 0.65rem;">Register unit to the database</p>
+                    </div>
+                </a>
+                <div class="tips-card">
+                    <div class="fw-bold mb-1 text-warning"><i class="bi bi-lightbulb me-1"></i> Information</div>
+                    <p class="text-muted m-0" style="font-size: 0.7rem;">System is directly connected to your database.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+```
+
+#### 5. Fitur Katalog & Dynamic Layout
+Komponen ini menangani interaksi data kompleks termasuk pencarian, penyaringan, dan kontrol tampilan.
+
+- Advanced Search & Sort: Integrasi form GET yang mengirimkan parameter pencarian dan pengurutan langsung ke QuerySet Django.
+- Dynamic View Toggle: Menggunakan pengkondisian DTE ({% if view_mode == 'list' %}) di dalam blok CSS untuk mengubah tata letak dari Grid ke List secara instan tanpa beban JavaScript tambahan.
+- Dynamic Dropdown: Filter tahun terbit di-render secara otomatis berdasarkan data unik yang tersedia di database.
+
+```html
+{% extends 'base.html' %}
+
+{% block title %}BookFlow - Katalog Buku{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; }
+    .book-card { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff; transition: 0.2s; height: 100%; display: flex; flex-direction: column; cursor: pointer; text-decoration: none; color: inherit; }
+    .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: #3b82f6; }
+    .cover-wrapper { height: 220px; background-color: #f1f5f9; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .cover-img { width: 100%; height: 100%; object-fit: cover; }
+    .book-info { padding: 16px; flex-grow: 1; }
+    .book-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; color: #0f172a; }
+
+    {% if view_mode == 'list' %}
+    .book-grid-container { display: block !important; }
+    .book-grid-container > .col { width: 100% !important; margin-bottom: 12px; }
+    .book-card { flex-direction: row !important; height: 100px !important; }
+    .cover-wrapper { width: 75px !important; height: 100px !important; flex-shrink: 0; }
+    .book-info { display: flex; flex-direction: column; justify-content: center; padding: 0 20px; }
+    {% endif %}
+    .cursor-pointer { cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">Book Catalog</h3>
+            <p class="text-muted mb-0" style="font-size: 0.9rem;">Manage and organize your book inventory.</p>
+        </div>
+        <a href="{% url 'add_book' %}" class="btn fw-medium btn-sm px-3 shadow-sm text-white" style="background-color: #3aa1ff;">
+            <i class="bi bi-plus-circle me-1"></i> Add New Book
+        </a>
+    </div>
+
+    <!-- Toolbar: Search & Sort -->
+    <div class="filter-bar mb-4 shadow-sm">
+        <div class="row align-items-center g-3">
+            <div class="col-md-6">
+                <form action="{% url 'catalog' %}" method="GET" class="position-relative">
+                    <input type="hidden" name="sort" value="{{ current_sort }}">
+                    <input type="hidden" name="view" value="{{ view_mode }}">
+                    <input type="hidden" name="tahun" value="{{ current_year }}">
+                    <i class="bi bi-search position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%);"></i>
+                    <input type="text" name="q" value="{{ query }}" class="form-control border-0 bg-light py-2 ps-5" placeholder="Search titles, authors..." style="font-size: 0.85rem; border-radius: 8px;">
+                </form>
+            </div>
+
+            <div class="col-md-6 d-flex justify-content-end align-items-center gap-4">
+                <div class="btn-group border rounded p-1 bg-light">
+                    <a href="?view=grid&sort={{ current_sort }}&tahun={{ current_year }}&q={{ query }}" class="btn btn-sm {% if view_mode != 'list' %}bg-white shadow-sm{% else %}text-muted border-0{% endif %}">
+                        <i class="bi bi-grid"></i>
+                    </a>
+                    <a href="?view=list&sort={{ current_sort }}&tahun={{ current_year }}&q={{ query }}" class="btn btn-sm {% if view_mode == 'list' %}bg-white shadow-sm{% else %}text-muted border-0{% endif %}">
+                        <i class="bi bi-list-ul"></i>
+                    </a>
+                </div>
+
+                <div class="d-flex align-items-center gap-2" style="font-size: 0.85rem; color: #64748b;">
+                    <span>Sort by:</span>
+                    <div class="dropdown">
+                        <span class="fw-bold text-dark cursor-pointer dropdown-toggle" data-bs-toggle="dropdown">
+                            {% if current_sort == 'judul' %}Judul (A-Z)
+                            {% elif current_sort == 'tahun_desc' %}Baru Terbit
+                            {% elif current_year %}Tahun: {{ current_year }}
+                            {% else %}Recently Added{% endif %}
+                        </span>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><a class="dropdown-item" href="?sort=-id&view={{ view_mode }}&q={{ query }}">Recently Added</a></li>
+                            <li><a class="dropdown-item" href="?sort=judul&view={{ view_mode }}&q={{ query }}">Judul (A-Z)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% for year in years_list %}
+                            <li><a class="dropdown-item" href="?tahun={{ year }}&sort={{ current_sort }}&view={{ view_mode }}&q={{ query }}">{{ year }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Loop -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4 mb-5 book-grid-container">
+        {% for buku in data_buku %}
+        <div class="col">
+            <a href="{% url 'book_detail' buku.id %}" class="book-card shadow-sm">
+                <div class="cover-wrapper">
+                    {% if buku.sampul_buku %}
+                        <img src="{{ buku.sampul_buku.url }}" class="cover-img" alt="{{ buku.judul }}">
+                    {% else %}
+                        <i class="bi bi-image" style="font-size: 3rem; color: #cbd5e1;"></i>
+                    {% endif %}
+                </div>
+                <div class="book-info">
+                    <h5 class="book-title">{{ buku.judul }}</h5>
+                    <p class="text-muted small mb-2">{{ buku.penulis }}</p>
+                    <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.7rem;">{{ buku.tahun_terbit }}</span>
+                </div>
+            </a>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <i class="bi bi-journal-x fs-1 text-muted mb-3 d-block"></i>
+            <h5 class="text-secondary fw-bold">No books found</h5>
+        </div>
+        {% endfor %}
+    </div>
+{% endblock %}
+```
+
+#### 6. Integrasi CRUD & Safety Logic
+Bagian ini mendokumentasikan bagaimana elemen UI berinteraksi dengan fungsionalitas backend untuk mengelola siklus data buku secara aman.
+
+##### A. Book Detail & Safety Delete
+Menampilkan informasi rinci buku yang terintegrasi dengan Object Storage (MinIO) dan fitur penghapusan data yang aman.
+
+- Media Handling: Pemanggilan gambar dilakukan dengan atribut .url. Sistem memiliki fallback otomatis berupa inisial judul buku jika file sampul tidak tersedia.
+- Safety Delete: Menggunakan Bootstrap Modal untuk konfirmasi. Peringatan menggunakan standar industri: "Are you sure you want to delete this book? This action cannot be undone."
+
+```html
+{% extends 'base.html' %}
+
+{% block title %}BookFlow - {{ buku.judul }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .book-container-detail { 
+        max-width: 1000px; 
+        margin: 0 auto; 
+        padding-top: 1.5rem; 
+    }
+    
+    .back-link { font-size: 0.9rem; color: #6b7280; text-decoration: none; transition: 0.2s; font-weight: 500; display: inline-flex; align-items: center; margin-bottom: 1rem; }
+    .back-link:hover { color: #2563eb; }
+
+    .detail-card { 
+        background: white; 
+        border: 1px solid #e5e7eb; 
+        border-radius: 16px; 
+        overflow: hidden; 
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .cover-side { 
+        background: #ffffff; 
+        padding: 30px; 
+        border-right: 1px solid #e5e7eb; 
+        text-align: center;
+    }
+    
+    .img-wrapper-detail {
+        position: relative;
+        display: block;
+        width: 100%;
+        max-width: 260px;
+        margin: 0 auto;
+    }
+
+    .book-cover-img-detail { 
+        width: 100%; 
+        aspect-ratio: 2 / 3; 
+        border-radius: 8px; 
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+        object-fit: cover;
+        display: block;
+        background-color: #f3f4f6;
+    }
+
+    .info-side { padding: 35px 40px; }
+    
+    .book-title-detail { 
+        font-size: 2.2rem; 
+        font-weight: 800; 
+        letter-spacing: -0.03em; 
+        margin-bottom: 4px; 
+        color: #111827; 
+    }
+    .book-author-detail { font-size: 1.15rem; color: #6b7280; margin-bottom: 25px; }
+
+    .overview-box { 
+        background: #f0f9ff; 
+        border-radius: 12px; 
+        padding: 20px; 
+        margin-bottom: 25px; 
+        border-left: 4px solid #2563eb;
+    }
+    .overview-title { 
+        font-size: 0.75rem; 
+        font-weight: 800; 
+        text-transform: uppercase; 
+        color: #0369a1; 
+        letter-spacing: 0.05em; 
+        margin-bottom: 8px; 
+    }
+    .overview-text { color: #0c4a6e; line-height: 1.6; font-size: 1rem; }
+
+    .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+    .spec-card { 
+        background: white; 
+        border: 1px solid #e5e7eb; 
+        border-radius: 12px; 
+        padding: 15px; 
+        display: flex; 
+        align-items: center;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .spec-icon { 
+        width: 42px; height: 42px; 
+        background: #f9fafb; 
+        border-radius: 10px; 
+        display: flex; align-items: center; justify-content: center; 
+        margin-right: 15px; color: #6b7280;
+        border: 1px solid #e5e7eb;
+        font-size: 1.2rem;
+    }
+    .spec-label { font-size: 0.7rem; text-transform: uppercase; color: #6b7280; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 2px; }
+    .spec-value { font-size: 1.1rem; font-weight: 800; color: #111827; }
+
+    .action-bar { 
+        display: flex; 
+        align-items: center; 
+        gap: 25px; 
+        padding-top: 25px; 
+        border-top: 1px solid #e5e7eb; 
+    }
+    .btn-action { 
+        font-size: 0.9rem; 
+        font-weight: 600; 
+        text-decoration: none; 
+        color: #111827; 
+        display: flex; align-items: center; gap: 8px; 
+        transition: 0.2s; 
+        background: none; border: none; padding: 0;
+    }
+    .btn-action:hover { color: #2563eb; }
+    .btn-delete { color: #ef4444; }
+    .btn-delete:hover { color: #dc2626; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="book-container-detail">
+    <div>
+        <a href="{% url 'catalog' %}" class="back-link">
+            <i class="bi bi-arrow-left me-2"></i> Back to Catalog
+        </a>
+    </div>
+
+    <div class="detail-card">
+        <div class="row g-0">
+            <div class="col-md-4 cover-side">
+                <div class="img-wrapper-detail">
+                    {% if buku.sampul_buku %}
+                        <img src="{{ buku.sampul_buku.url }}" class="book-cover-img-detail" alt="{{ buku.judul }}">
+                    {% else %}
+                        <div class="book-cover-img-detail d-flex align-items-center justify-content-center" style="border: 2px dashed #e5e7eb;">
+                            <i class="bi bi-image text-muted opacity-25" style="font-size: 4rem;"></i>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-md-8 info-side">
+                <h1 class="book-title-detail">{{ buku.judul }}</h1>
+                <p class="book-author-detail">by <span class="fw-bold text-primary">{{ buku.penulis }}</span></p>
+
+                <div class="overview-box">
+                    <div class="overview-title">Summary</div>
+                    <div class="overview-text">
+                        The book titled <strong>{{ buku.judul }}</strong> is a work by <strong>{{ buku.penulis }}</strong>. This unit is recorded to have a thickness of {{ buku.halaman }} pages and was officially first published in the year {{ buku.tahun_terbit }}.
+                    </div>
+                </div>
+
+                <div class="spec-grid">
+                    <div class="spec-card">
+                        <div class="spec-icon"><i class="bi bi-file-earmark-text"></i></div>
+                        <div>
+                            <div class="spec-label">Total Pages</div>
+                            <div class="spec-value">{{ buku.halaman }}</div>
+                        </div>
+                    </div>
+                    <div class="spec-card">
+                        <div class="spec-icon"><i class="bi bi-calendar3"></i></div>
+                        <div>
+                            <div class="spec-label">Published Year</div>
+                            <div class="spec-value">{{ buku.tahun_terbit }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <a href="{% url 'edit_book' buku.id %}" class="btn-action">
+                        <i class="bi bi-pencil-square"></i> Edit Information
+                    </a>
+                    
+                    <button type="button" class="btn-action btn-delete" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="bi bi-trash"></i> Delete from Storage
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="deleteModalLabel text-dark">Confirm Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4 text-dark">
+        Are you sure you want to delete the <strong>{{ buku.judul }}</strong> book? This action cannot be undone.
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Cancel</button>
+        <form action="{% url 'delete_book' buku.id %}" method="POST" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger fw-bold px-4">Yes, Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+```
+
+##### B. Tambah Buku (Form Management)
+Halaman untuk registrasi unit buku baru ke dalam database sistem.
+
+Security & Upload: Menggunakan {% csrf_token %} untuk keamanan cross-site dan atribut enctype="multipart/form-data" pada form agar file gambar bisa dikirim dengan benar ke server.
+
+```html
+{% extends 'base.html' %}
+
+{% block title %}BookFlow - Tambah Stok Baru{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container { 
+        background: #ffffff; 
+        border: 1px solid #e2e8f0; 
+        border-radius: 20px; 
+        padding: 40px; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02); 
+        position: relative; 
+        max-width: 950px; 
+    }
+    
+    .page-title { font-weight: 800; font-size: 1.85rem; color: #1e293b; margin-bottom: 8px; }
+    .page-subtitle { color: #64748b; font-size: 0.95rem; margin-bottom: 30px; }
+
+    .btn-back-top { color: #64748b; text-decoration: none; font-weight: 600; font-size: 0.85rem; transition: 0.2s; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+    .btn-back-top:hover { color: #3b82f6; }
+
+    .spec-header { border-left: 4px solid #3b82f6; padding-left: 15px; margin-bottom: 30px; }
+    .form-label { font-weight: 600; color: #334155; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .form-control { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; background-color: #fcfdfe; }
+    
+    .upload-box { border: 2px dashed #cbd5e1; border-radius: 14px; padding: 30px 20px; text-align: center; background: #f8fafc; cursor: pointer; }
+    .upload-box:hover { border-color: #3b82f6; background: #f0f7ff; }
+    
+    .btn-save { background-color: #3b82f6; color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 700; transition: 0.3s; }
+    .btn-save:hover { background-color: #2563eb; transform: translateY(-2px); }
+
+    .icon-floating { width: 45px; height: 45px; background: #eff6ff; color: #3b82f6; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+        <h1 class="page-title">Add New Book to Storage</h1>
+        <p class="page-subtitle">Enter the details below to catalog a new addition to your personal collection.</p>
+    </div>
+    <div class="icon-floating shadow-sm">
+        <i class="bi bi-journal-plus"></i>
+    </div>
+</div>
+
+<div class="form-container">
+    <a href="{% url 'catalog' %}" class="btn-back-top">
+        <i class="bi bi-arrow-left"></i> Kembali ke Katalog
+    </a>
+
+    <form method="POST" enctype="multipart/form-data" action="{% url 'add_book' %}">
+        {% csrf_token %}
+        
+        <div class="spec-header">
+            <h6 class="fw-bold mb-1">Book Specifications</h6>
+            <p class="text-muted small">All fields are required for accurate inventory tracking.</p>
+        </div>
+
+        <div class="d-flex flex-column gap-4">
+            <div>
+                <label class="form-label"><i class="bi bi-book text-primary"></i> Book Title</label>
+                <input type="text" name="judul" class="form-control" placeholder="e.g. The Great Gatsby" required>
+            </div>
+
+            <div>
+                <label class="form-label"><i class="bi bi-person text-primary"></i> Author Name</label>
+                <input type="text" name="penulis" class="form-control" placeholder="e.g. F. Scott Fitzgerald" required>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label"><i class="bi bi-hash text-primary"></i> Total Pages</label>
+                    <input type="number" name="halaman" class="form-control" placeholder="e.g. 180" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label"><i class="bi bi-calendar-event text-primary"></i> Year Published</label>
+                    <input type="number" name="tahun_terbit" class="form-control" placeholder="e.g. 1925" required>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label"><i class="bi bi-image text-primary"></i> Book Cover Image</label>
+                <div class="upload-box" onclick="document.getElementById('sampul_buku').click();">
+                    <i class="bi bi-cloud-arrow-up text-primary fs-2 mb-2 d-block"></i>
+                    <span class="d-block fw-bold small" id="file-name-text">Click to upload or drag and drop</span>
+                    <input type="file" name="sampul_buku" id="sampul_buku" hidden accept="image/*" required onchange="displayFileName(this)">
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-4 border-top pt-4">
+                <a href="{% url 'catalog' %}" class="text-decoration-none text-muted fw-medium small">Cancel and Return</a>
+                <button type="submit" class="btn btn-save shadow-sm">Save Book</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function displayFileName(input) {
+        if (input.files && input.files[0]) {
+            const fileName = input.files[0].name;
+            const displayText = document.getElementById('file-name-text');
+            displayText.innerText = "Terpilih: " + fileName;
+            displayText.style.color = "#3b82f6";
+        }
+    }
+</script>
+{% endblock %}
+```
+- Edit Information (Update System)
+Halaman ini memungkinkan pembaruan metadata buku yang sudah ada. Berbeda dengan halaman Add, pada halaman ini variabel DTE digunakan untuk mengisi nilai awal (value) pada input, sehingga admin tahu data mana yang sedang diubah.
+- Aksen Visual: Menggunakan skema warna oranye (#f59e0b) untuk membedakan mode "Edit" dengan mode "Tambah".
+Data Binding: value="{{ buku.judul }}" digunakan untuk memanggil data lama dari database.
+
+```html
+{% extends 'base.html' %}
+
+{% block title %}BookFlow - Edit {{ buku.judul }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container { 
+        background: #ffffff; 
+        border: 1px solid #e2e8f0; 
+        border-radius: 20px; 
+        padding: 40px; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02); 
+        position: relative; 
+        max-width: 950px; 
+    }
+    
+    .page-title { font-weight: 800; font-size: 1.85rem; color: #1e293b; margin-bottom: 8px; }
+    .page-subtitle { color: #64748b; font-size: 0.95rem; margin-bottom: 30px; }
+
+    .btn-back-top { color: #64748b; text-decoration: none; font-weight: 600; font-size: 0.85rem; transition: 0.2s; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+    .btn-back-top:hover { color: #f59e0b; }
+
+    .spec-header { border-left: 4px solid #f59e0b; padding-left: 15px; margin-bottom: 30px; }
+    .form-label { font-weight: 600; color: #334155; font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .form-control { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; background-color: #fcfdfe; }
+    .form-control:focus { border-color: #f59e0b; box-shadow: 0 0 0 0.25rem rgba(245, 158, 11, 0.1); }
+    
+    .upload-box { border: 2px dashed #cbd5e1; border-radius: 14px; padding: 20px; text-align: center; background: #f8fafc; cursor: pointer; }
+    .upload-box:hover { border-color: #f59e0b; background: #fffbeb; }
+    
+    .btn-save { background-color: #f59e0b; color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 700; transition: 0.3s; }
+    .btn-save:hover { background-color: #d97706; transform: translateY(-2px); }
+
+    .icon-floating { width: 45px; height: 45px; background: #fff7ed; color: #f59e0b; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    
+    .current-img-preview { width: 80px; height: 110px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+        <h1 class="page-title">Edit Book Information</h1>
+        <p class="page-subtitle">Update the metadata or cover image for "<strong>{{ buku.judul }}</strong>".</p>
+    </div>
+    <div class="icon-floating shadow-sm">
+        <i class="bi bi-pencil-square"></i>
+    </div>
+</div>
+
+<div class="form-container">
+    <a href="{% url 'book_detail' buku.id %}" class="btn-back-top">
+        <i class="bi bi-arrow-left"></i> Kembali ke Detail Buku
+    </a>
+
+    <form method="POST" enctype="multipart/form-data" action="{% url 'edit_book' buku.id %}">
+        {% csrf_token %}
+        
+        <div class="spec-header">
+            <h6 class="fw-bold mb-1" style="color: #b45309;">Modify Specifications</h6>
+            <p class="text-muted small">Update any field to maintain an accurate inventory record.</p>
+        </div>
+
+        <div class="d-flex flex-column gap-4">
+            <div>
+                <label class="form-label"><i class="bi bi-book text-warning"></i> Judul Buku</label>
+                <input type="text" name="judul" class="form-control" value="{{ buku.judul }}" required>
+            </div>
+
+            <div>
+                <label class="form-label"><i class="bi bi-person text-warning"></i> Nama Penulis</label>
+                <input type="text" name="penulis" class="form-control" value="{{ buku.penulis }}" required>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label"><i class="bi bi-hash text-warning"></i> Jumlah Halaman</label>
+                    <input type="number" name="halaman" class="form-control" value="{{ buku.halaman }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label"><i class="bi bi-calendar-event text-warning"></i> Tahun Terbit</label>
+                    <input type="number" name="tahun_terbit" class="form-control" value="{{ buku.tahun_terbit }}" required>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label"><i class="bi bi-image text-warning"></i> Perbarui Sampul Buku</label>
+                <div class="d-flex align-items-center gap-4 mb-3">
+                    {% if buku.sampul_buku %}
+                    <div class="text-center">
+                        <p class="text-muted mb-2" style="font-size: 0.7rem;">Sampul Saat Ini:</p>
+                        <img src="{{ buku.sampul_buku.url }}" class="current-img-preview shadow-sm">
+                    </div>
+                    {% endif %}
+                    
+                    <div class="upload-box flex-grow-1" onclick="document.getElementById('sampul_buku').click();">
+                        <i class="bi bi-arrow-repeat text-warning fs-3 mb-1 d-block"></i>
+                        <span class="d-block fw-bold small" id="file-name-text">Ganti foto</span>
+                        <p class="text-muted small mb-0">Klik untuk memilih file baru</p>
+                        <input type="file" name="sampul_buku" id="sampul_buku" hidden accept="image/*" onchange="displayFileName(this)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-4 border-top pt-4">
+                <a href="{% url 'book_detail' buku.id %}" class="text-decoration-none text-muted fw-medium small">Batalkan Perubahan</a>
+                <button type="submit" class="btn btn-save shadow-sm">Update & Simpan</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function displayFileName(input) {
+        if (input.files && input.files[0]) {
+            const fileName = input.files[0].name;
+            const displayText = document.getElementById('file-name-text');
+            displayText.innerText = "File Terpilih: " + fileName;
+            displayText.style.color = "#f59e0b";
+        }
+    }
+</script>
+{% endblock %}
+```
+
+#### 7. Design Tokens & Visual Guide
+Sistem ini mengikuti standar desain bersih (Clean Design) dengan token berikut:
+
+- Primary Action (Blue): #3b82f6 - Untuk Tambah & Simpan.
+- Warning Action (Orange): #f59e0b - Khusus untuk halaman Edit.
+- Danger Action (Red): #ef4444 - Untuk aksi Hapus permanen.
+- Typography: Google Fonts Inter untuk tampilan profesional dan teknis.
 
 ---
 
