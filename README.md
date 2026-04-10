@@ -846,7 +846,6 @@ if settings.DEBUG:
 Penyimpanan file HTML dilakukan secara modular di dalam folder aplikasi books/templates/. Pemisahan ini memudahkan pengelolaan kode antara layout utama dan konten spesifik.
 
 ```
-Plaintext
 books/
 └── templates/
     ├── base.html         # (Utama) Kerangka dasar Sidebar & Topbar
