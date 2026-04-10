@@ -11,7 +11,7 @@
 ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
 ![MinIO](https://img.shields.io/badge/MinIO-C72E49?style=for-the-badge&logo=minio&logoColor=white)
 
-**Aplikasi web penyimpanan buku berbasis REST API yang di-deploy menggunakan Docker Swarm**
+**Aplikasi web penyimpanan buku berbasis Django yang di-deploy menggunakan Docker Swarm**
 
 [🚀 Demo](#-akses-aplikasi) · [📖 Dokumentasi](#-arsitektur) · [🐛 Issues](../../issues)
 
