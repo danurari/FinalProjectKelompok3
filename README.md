@@ -29,9 +29,8 @@
 - [Docker Installation & Swarm Initialization](#-docker-installation--swarm-initialization)
 - [Create Docker Secret](#-create-docker-secret)
 - [Konfigurasi](#-konfigurasi)
-- [Akses Aplikasi](#-akses-aplikasi)
-- [Monitoring](#-monitoring)
-- [CI/CD Pipeline](#-cicd-pipeline)
+- [Docker Stack Deployment](#-docker-stack-deployment)
+- [Pembuktian Final Project](#-pembuktian-final-project)
 
 ---
 
