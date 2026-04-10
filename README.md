@@ -2910,7 +2910,7 @@ Berikut adalah langkah-langkah taktis untuk pembuktian infrastruktur swarm
    ```
 3. Saat pengujian sedang berjalan deras (ditandai dengan indikator *Virtual Users* yang terus naik), pindah ke terminal **Manager VM**.
 
-4. Lipat gandakan jumlah replika *backend* dari 3 menjadi 6 *container* secara *real-time*:
+4. Lipat gandakan jumlah replika *backend* dari 2 menjadi 4 *container* secara *real-time*:
    ```bash
    docker service scale bookstorage_backend-django=4
    ```
